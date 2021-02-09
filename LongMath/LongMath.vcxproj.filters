@@ -19,4 +19,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="bigfloat.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="conversions.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>
