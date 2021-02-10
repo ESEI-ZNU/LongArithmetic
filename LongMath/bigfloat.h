@@ -6,6 +6,7 @@
 #include "conversions.h"
 
 #define BigNum(x) BigFloat(#x)
+#define basePow 9
 
 class BigFloat
 {
@@ -17,40 +18,51 @@ class BigFloat
 	public:
 		BigFloat(const char* representation)
 		{
-			const int power = 9;
-			char base1b[power + 2];
+			// last not null index
+			int ptr = strlen(representation)-1;
 
-			int reprIdx = 0;
-			int symbolIdx = 0;
-			
-			char byte = *(representation);
-			isNeg = byte == '-';
+			// decrease cuz 0 counts
+			int digitPtr = basePow -1;
 
-			bool countExponent = false;
-			bool last = false;
-			while (!last)
+			// add 1 to ensure space for null
+			char base1b[basePow + 1];
+
+			// add NULL at end
+			base1b[basePow] = 0;
+
+			bool stopExpCount = false;
+
+			// while end not reached
+			while (ptr != -1) 
 			{
-				last = !*(representation + reprIdx);
-				byte = *(representation + reprIdx);
-				base1b[symbolIdx] = byte;
-				
-				exponent += countExponent;
-				countExponent = countExponent || byte == '.' || byte == ',';
-			
-				
+				bool last = ptr == 0;
+				// current char of number repres
+				char curr = representation[ptr];
 
-				if ( (symbolIdx && !(symbolIdx%power) ) || last)
+				// add current char to base X number
+				base1b[digitPtr] = curr;
+
+				// if base X filled
+				if (!digitPtr || last) 
 				{
-					base1b[symbolIdx+1] = 0;
-					symbolIdx %= power;
-					std::cout << parseInt(base1b) << std::endl;
-					mantissa.push_back(parseInt(base1b));
+					// parse repr as number
+					int32_t digit = parseInt(digitPtr, base1b);
+
+					// save 
+					this->mantissa.push_back(digit);
+
+					// reset digit pointer 
+					// add one to compensate next --
+					digitPtr = 8 + 1;
 				}
-				else
-				{
-					symbolIdx += !(byte == '.' || byte == ',');
-				}
-				reprIdx++;
+
+				// does not count as char
+				digitPtr-= curr != '.';
+				stopExpCount = stopExpCount || curr == '.';
+				exponent += !stopExpCount;
+
+				// go to next char
+				ptr--;
 			}
 		}
 
@@ -60,11 +72,56 @@ class BigFloat
 		{
 
 		}
-
-	BigFloat* operator+(const BigFloat obj)
+	
+	BigFloat& operator+(BigFloat& obj)
 	{
+		// 999 999 999
+		// 10^9
+		// 10^8
 		// code that will increase this by obj
-		return this;
+		//        10    
+		//  12 34 56 78 
+		// +
+		//  12 46 27 62
+		//  ===========
+		//           40
+
+		bool overflow = false;
+		int base = 1000000000;
+		std::vector<std::int32_t> mantissa1 = this->mantissa;
+		std::vector<std::int32_t> mantissa2 = obj.mantissa;
+
+		int mantissaLen = std::max(mantissa1.size(), mantissa2.size());
+		int m1ptr = mantissa1.size() - 1;
+		int m2ptr = mantissa2.size() - 1;
+
+		for (int i = 0; i < mantissaLen; i++) 
+		{
+			int32_t digit1;
+			int32_t digit2;
+
+			if (m1ptr == -1)
+				digit1 = 0;
+			else
+				digit1 = mantissa1[m1ptr];
+
+			if (m2ptr == -1)
+				digit2 = 0;
+			else
+				digit2 = mantissa2[m2ptr];
+
+			int32_t res = digit1 + digit2 + (overflow * base/10);
+
+			overflow = res >= base;
+			std::cout << digit1 << " + " << digit2 << " = "<< res << "overflow: " << overflow << std::endl;
+			res = res % base;
+
+			(*this).mantissa[m1ptr] = res;
+
+			m1ptr--;
+			m2ptr--;
+		}
+		return *this;
 	}
 
 	BigFloat* operator-(const BigFloat obj)
@@ -93,7 +150,23 @@ class BigFloat
 
 	friend std::ostream& operator << (std::ostream& os, BigFloat& obj)
 	{
-		// code that will print out representation of number
-		return os << "";
+		std::vector<int32_t> digits = obj.mantissa;
+
+		int digCount = digits.size();
+		std::string repr = std::string();
+		
+		repr[0] = 0;
+		std::string z = std::string();
+		for (int i = digCount-1; i >= 0; i--)
+		{
+			std::string str = std::string(parseString(obj.mantissa[i], basePow));
+			repr += str;
+			z = "0.";
+			z += repr;
+			z += "e-";
+			z += parseString(obj.exponent);
+		}
+
+		return os << z;
 	}
 };

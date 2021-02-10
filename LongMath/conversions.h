@@ -7,21 +7,47 @@ int getDigit(char c)
 	return c - 48;
 }
 
-char* parseString(int val)
+int countDigits(long l) 
+{
+	int base = 10;
+	int i = 1;
+	for (; l /= base; i++);
+	return i;
+}
+
+char* parseString(int val, int i) 
 {
 	int base = 10;
 
-	int n = val;
-	int i = 0;
-	while (n)
+	char* out = new char[i + 1];
+	out[i] = 0;
+
+	while (val)
 	{
-		n /= base;
-		i++;
+		i--;
+		char num = val % (base);
+		out[i] = 48 + num;
+		val /= base;
 	}
+
+	// fill left digits with 0
+	while (i > 0)
+	{
+		i--;
+		out[i] = '0';
+	}
+	return out;
+}
+
+char* parseString(int val)
+{
+	int base = 10;
+	int i = countDigits(val);
 
 	char num;
 	char* out = new char[i + 1];
 	out[i] = 0;
+	out[0] = '0';
 	while (val)
 	{
 		i--;
@@ -49,5 +75,24 @@ int32_t parseInt(char* string)
 		pow *= base;
 	}
 	return res;
+}
+
+int32_t parseInt(int start, char* string)
+{
+	return parseInt(start + string);
+}
+
+void concat(char* dest, char* src)
+{
+	for (; *dest; dest++);
+	for (; *src; *dest++ = *src++);
+	*dest = 0;
+}
+
+int strlen(char* s) 
+{
+	int len = 0;
+	for (; *s++; len++);
+	return len;
 }
 
