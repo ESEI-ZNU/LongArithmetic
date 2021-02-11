@@ -10,79 +10,133 @@
 
 class BigFloat
 {
-	protected:
-		bool isNeg = false;
-		std::vector<std::int32_t> mantissa;
-		int32_t exponent = 0;
+protected:
+	bool isNeg = false;
+	std::vector<std::int32_t> mantissa;
+	int32_t exponent = 0;
 
-	public:
-		BigFloat(const char* representation)
+public:
+
+	BigFloat(const char* repr)
+	{
+		// normalize string
+		std::string str = preprocStr(repr);
+
+		// last not null index
+		int ptr = str.length() - 1;
+
+		// decrease cuz 0 counts
+		int digitPtr = basePow - 1;
+
+		// count those fat digits
+		// count of digits before dot
+		int digitCounter = 0;
+
+		// add 1 to ensure space for null
+		char base1b[basePow + 1];
+
+		// add NULL at end
+		base1b[basePow] = 0;
+
+		bool dotReached = false;
+
+		// by default dot is at the end
+		int dotIdx = str.length();
+
+		// while end not reached
+		while (ptr != -1)
 		{
-			// last not null index
-			int ptr = strlen(representation)-1;
+			bool last = ptr == 0;
+			// current char of number repres
+			char curr = str[ptr];
 
-			// decrease cuz 0 counts
-			int digitPtr = basePow -1;
+			// add current char to base X number
+			base1b[digitPtr] = curr;
 
-			// add 1 to ensure space for null
-			char base1b[basePow + 1];
-
-			// add NULL at end
-			base1b[basePow] = 0;
-
-			bool countExp = false;
-
-			// while end not reached
-			while (ptr != -1) 
+			// if base X filled
+			if ((!digitPtr || curr == '.') || last)
 			{
-				bool last = ptr == 0;
-				// current char of number repres
-				char curr = representation[ptr];
+				
+				// parse repr as number
+				int32_t digit = parseInt(digitPtr, base1b);
 
-				if (curr == '_' || curr == '\'')
-				{
-					ptr--;
-					continue;
-				}
-					
+				// save 
+				this->mantissa.push_back(digit);
 
-				// add current char to base X number
-				base1b[digitPtr] = curr;
-
-				// if base X filled
-				if ((!digitPtr && curr != '.') || last) 
-				{
-					// parse repr as number
-					int32_t digit = parseInt(digitPtr, base1b);
-
-					// save 
-					this->mantissa.push_back(digit);
-
-					// reset digit pointer 
-					// add one to compensate next --
-					digitPtr = basePow;
-				}
-
-				// does not count as char
-				digitPtr-= curr != '.';
-				countExp = countExp || curr == '.';
-				exponent += countExp;
-
-				// go to next char
-				ptr--;
+				// reset digit pointer 
+				// add one to compensate next --
+				digitPtr = basePow;
 			}
+
+			// does not count as char
+			digitPtr -= curr != '.';
+
+			digitCounter += dotReached;
+			dotReached = dotReached || curr == '.';
+
+			// go to next char
+			ptr--;
 		}
 
-		double toDouble() 
+		// count exponent based on dot position
+		this->exponent = countExp(digitCounter);
+	}
+
+	std::string preprocStr(const char* s)
+	{
+		std::string str = std::string(s);
+		int idx = 0;
+		bool notNull = false;
+
+		// remove all underscores and leading zeros
+		for (char c : str)
 		{
+			if (c == '_' || (notNull && c == '0'))
+			{
+				notNull = c != '0';
+				str = str.erase(idx, 1);
+				idx--;
+			}
+			idx++;
 		}
+		return str;
+	}
 
-		// todo:
-		// add numeric constructor
-		BigFloat(long value)
+	int countExp(int preDotDigs) 
+	{
+		if (preDotDigs) 
 		{
-
+			return preDotDigs;
 		}
+
+		int exp = 0;
+		for (int i=0; i < this->mantissa.size() && !this->mantissa[i++]; exp--);
+		return exp;
+	}
+
+	double toDouble() 
+	{
+		if (exponent > 127) 
+		{
+			return INFINITY;
+		}
+
+		if (exponent < -127) 
+		{
+			return 0;
+		}
+
+		double d = parseDouble(this->mantissa, this->exponent, pow(10, basePow) );
+		std::cout << "parsed: " << d << std::endl;
+		return d;
+	}
+
+	// todo:
+	// add numeric constructor
+	BigFloat(long value)
+	{
+
+	}
 	
 	BigFloat& operator+(BigFloat& obj)
 	{
@@ -175,7 +229,7 @@ class BigFloat
 			repr += str;
 			z = "0.";
 			z += repr;
-			z += "e-";
+			z += "e";
 			z += parseString(obj.exponent);
 		}
 		return os << z;

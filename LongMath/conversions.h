@@ -1,5 +1,5 @@
 #pragma once
-
+#include "bigfloat.h"
 #include <iostream>
 
 int getDigit(char c)
@@ -74,6 +74,24 @@ int32_t parseInt(char* string)
 		res += getDigit(*c) * pow;
 		pow *= base;
 	}
+
+	return res;
+}
+
+#define basePow 2
+double parseDouble(std::vector<int32_t> mantissa, int exponent, int base)
+{
+	double res = 0;
+	int power = mantissa.size();
+	power = -power;
+	
+	for (int32_t dig32 : mantissa)
+	{
+		std::cout << "pow: " << (power + exponent) << std::endl;
+		res += dig32 * (power + exponent) * pow(10, basePow);
+		power++;
+	}
+
 	return res;
 }
 
