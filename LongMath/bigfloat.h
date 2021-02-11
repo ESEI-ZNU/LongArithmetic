@@ -6,7 +6,7 @@
 #include "conversions.h"
 
 #define BigNum(x) BigFloat(#x)
-#define basePow 9
+#define basePow 2
 
 class BigFloat
 {
@@ -30,7 +30,7 @@ class BigFloat
 			// add NULL at end
 			base1b[basePow] = 0;
 
-			bool stopExpCount = false;
+			bool countExp = false;
 
 			// while end not reached
 			while (ptr != -1) 
@@ -39,11 +39,18 @@ class BigFloat
 				// current char of number repres
 				char curr = representation[ptr];
 
+				if (curr == '_' || curr == '\'')
+				{
+					ptr--;
+					continue;
+				}
+					
+
 				// add current char to base X number
 				base1b[digitPtr] = curr;
 
 				// if base X filled
-				if (!digitPtr || last) 
+				if ((!digitPtr && curr != '.') || last) 
 				{
 					// parse repr as number
 					int32_t digit = parseInt(digitPtr, base1b);
@@ -53,17 +60,21 @@ class BigFloat
 
 					// reset digit pointer 
 					// add one to compensate next --
-					digitPtr = 8 + 1;
+					digitPtr = basePow;
 				}
 
 				// does not count as char
 				digitPtr-= curr != '.';
-				stopExpCount = stopExpCount || curr == '.';
-				exponent += !stopExpCount;
+				countExp = countExp || curr == '.';
+				exponent += countExp;
 
 				// go to next char
 				ptr--;
 			}
+		}
+
+		double toDouble() 
+		{
 		}
 
 		// todo:
@@ -75,52 +86,53 @@ class BigFloat
 	
 	BigFloat& operator+(BigFloat& obj)
 	{
-		// 999 999 999
-		// 10^9
-		// 10^8
-		// code that will increase this by obj
-		//        10    
-		//  12 34 56 78 
-		// +
-		//  12 46 27 62
-		//  ===========
-		//           40
-
 		bool overflow = false;
-		int base = 1000000000;
+		int base = pow(10, basePow);
+
 		std::vector<std::int32_t> mantissa1 = this->mantissa;
 		std::vector<std::int32_t> mantissa2 = obj.mantissa;
 
-		int mantissaLen = std::max(mantissa1.size(), mantissa2.size());
-		int m1ptr = mantissa1.size() - 1;
-		int m2ptr = mantissa2.size() - 1;
+		int m1ptr = 0;
+		int m2ptr = 0;
 
-		for (int i = 0; i < mantissaLen; i++) 
+		int commaDiff = (this->exponent - obj.exponent);
+
+		// move pointer to match commas
+		if (commaDiff < 0)
+			m1ptr -= commaDiff;
+		else 
+			m2ptr -= commaDiff;
+
+		std::vector<int32_t> newMantissa;
+
+		while (m1ptr < mantissa1.size() || m2ptr < mantissa1.size() || overflow)
 		{
 			int32_t digit1;
 			int32_t digit2;
 
-			if (m1ptr == -1)
+			if (m1ptr < 0 || m1ptr >= mantissa1.size())
 				digit1 = 0;
 			else
 				digit1 = mantissa1[m1ptr];
 
-			if (m2ptr == -1)
+			if (m2ptr < 0|| m2ptr >= mantissa2.size())
 				digit2 = 0;
 			else
 				digit2 = mantissa2[m2ptr];
 
-			int32_t res = digit1 + digit2 + (overflow * base/10);
-
+			int32_t res = digit1 + digit2 + overflow;
+			std::cout << digit1 << " + " << digit2 << " = " << res << " add overflow: " << overflow << std::endl;
 			overflow = res >= base;
-			std::cout << digit1 << " + " << digit2 << " = "<< res << "overflow: " << overflow << std::endl;
+			
 			res = res % base;
+			newMantissa.push_back(res);
 
-			(*this).mantissa[m1ptr] = res;
-
-			m1ptr--;
-			m2ptr--;
+			m1ptr++;
+			m2ptr++;
 		}
+
+		this->mantissa = newMantissa;
+
 		return *this;
 	}
 
@@ -166,7 +178,18 @@ class BigFloat
 			z += "e-";
 			z += parseString(obj.exponent);
 		}
-
 		return os << z;
 	}
+	/*
+	friend istream& operator >> (istream& out, BigFloat& obj)
+	{
+		long l;
+		out >> l;
+
+		// Todo:
+		// initialize object
+
+		return out;
+	}*/
+
 };

@@ -5,15 +5,12 @@ using namespace std;
 
 int main()
 {
-	// wtite tests here
-	//1 231234234 24.4234243
-	BigFloat num = BigNum(123123423424.4234243);
-	BigFloat num2 = BigNum(9999999.999999);
+	// write tests here
+	// 1  23 12 34 23 42  4.4 23 42 43
+	// 11 11 11 11 11 1.1 11  11 11 00 00
+	BigFloat num = BigNum (99_23_12_34_23_42_4.4_23_42_43);
+	BigFloat num2 = BigNum(99_11_11_11_11_11_1.1_11_11_11);
 
-	cout <<"n: " << num;
-
-	// (123123423) (424423424) (3)
-	// (999999999) (9999)
-
-	// 0010 1101 1011 0110 1010 1001
+	cout <<"n: " << num + num2;
+	double d = 123'456.789'012;
 }
