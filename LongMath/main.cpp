@@ -7,12 +7,20 @@ using namespace std;
 int main()
 {
 	// write tests here
-	// 1  23 12 34 23 42  4.4 23 42 43
-	// 11 11 11 11 11 1.1 11  11 11 00 00
-	// 0.01 23 01 23 x100e2
-	BigFloat num = BigNum (123.123);
-	BigFloat num2 = BigNum(99_11_11_11_11_11_1.1_11_11_11);
+	BigFloat num = BigNum      (12.00_31_23);
+	BigFloat num2 = BigNum(9_91_11.11_11_11_1);
 
-	cout <<"double: " << num .toDouble() << endl;
-	cout <<"my repr: " << num;
+	//cout <<"double: " << num.toDouble() << endl;
+	cout <<"my repr: " << num + num2 << endl;
+
+	const char tests[][10] = { ".123", "312", "12.4312", "312.313", "234.13", "4.134" };
+
+	for (const char* string : tests) 
+	{
+		cout << string << "\t | " << 
+			BigFloat(string).toDouble() << 
+			"\t = "  << 
+			std::stod(string) << "\t " << 
+			(BigFloat(string).toDouble() == std::stod(string)) << endl;
+	}
 }

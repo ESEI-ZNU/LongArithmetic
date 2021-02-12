@@ -15,12 +15,12 @@ int countDigits(long l)
 	return i;
 }
 
-char* parseString(int val, int i) 
+// broken
+std::string parseString(int val, int i) 
 {
 	int base = 10;
 
-	char* out = new char[i + 1];
-	out[i] = 0;
+	std::string out = std::string();
 
 	while (val)
 	{
@@ -39,21 +39,32 @@ char* parseString(int val, int i)
 	return out;
 }
 
-char* parseString(int val)
+std::string parseString(int val)
 {
 	int base = 10;
-	int i = countDigits(val);
-
 	char num;
-	char* out = new char[i + 1];
-	out[i] = 0;
-	out[0] = '0';
-	while (val)
+	bool isNeg = val < 0;
+	int c = countDigits(val) + isNeg;
+	int i = isNeg;
+
+	std::string out;
+
+	if (isNeg)
 	{
-		i--;
+		out = std::string(c, '-');
+	}
+	else 
+	{
+		out = std::string(c, '0');
+	}
+	val = abs(val);
+
+	while (i < c)
+	{
 		num = val % (base);
-		out[i] = 48 + num;
+		out[c-i-!isNeg] = (48 + num);
 		val /= base;
+		i++;
 	}
 	return out;
 }
@@ -78,17 +89,35 @@ int32_t parseInt(char* string)
 	return res;
 }
 
+int32_t parseInt(std::string str)
+{
+	int32_t res = 0;
+	int pow = 1;
+	int base = 10;
+	reverse(str.begin(), str.end());
+
+	for (char c : str)
+	{
+		res += getDigit(c) * pow;
+		pow *= base;
+	}
+
+	return res;
+}
+
 #define basePow 2
 double parseDouble(std::vector<int32_t> mantissa, int exponent, int base)
 {
 	double res = 0;
 	int power = mantissa.size();
 	power = -power;
-	
-	for (int32_t dig32 : mantissa)
+
+	std::vector<int32_t> backwardMantissa = std::vector<int32_t>(mantissa);
+	std::reverse(backwardMantissa.begin(), backwardMantissa.end());
+
+	for (int32_t dig32 : backwardMantissa)
 	{
-		std::cout << "pow: " << (power + exponent) << std::endl;
-		res += dig32 * (power + exponent) * pow(10, basePow);
+		res += dig32 * pow(pow(10, basePow), (power + exponent));
 		power++;
 	}
 

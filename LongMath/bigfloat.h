@@ -22,96 +22,99 @@ public:
 		// normalize string
 		std::string str = preprocStr(repr);
 
-		// last not null index
-		int ptr = str.length() - 1;
+		int digitCounter = str.size();
+		int dotIdx = str.find('.');
 
-		// decrease cuz 0 counts
-		int digitPtr = basePow - 1;
-
-		// count those fat digits
-		// count of digits before dot
-		int digitCounter = 0;
-
-		// add 1 to ensure space for null
-		char base1b[basePow + 1];
-
-		// add NULL at end
-		base1b[basePow] = 0;
-
-		bool dotReached = false;
-
-		// by default dot is at the end
-		int dotIdx = str.length();
-
-		// while end not reached
-		while (ptr != -1)
+		if (dotIdx != -1) 
 		{
-			bool last = ptr == 0;
-			// current char of number repres
-			char curr = str[ptr];
-
-			// add current char to base X number
-			base1b[digitPtr] = curr;
-
-			// if base X filled
-			if ((!digitPtr || curr == '.') || last)
-			{
-				
-				// parse repr as number
-				int32_t digit = parseInt(digitPtr, base1b);
-
-				// save 
-				this->mantissa.push_back(digit);
-
-				// reset digit pointer 
-				// add one to compensate next --
-				digitPtr = basePow;
-			}
-
-			// does not count as char
-			digitPtr -= curr != '.';
-
-			digitCounter += dotReached;
-			dotReached = dotReached || curr == '.';
-
-			// go to next char
-			ptr--;
+			digitCounter = dotIdx;
+			str = str.erase(dotIdx, 1);
 		}
 
+		int curPtr = 0;
+		int strIdx = digitCounter % basePow;
+
+		std::string digit = std::string(basePow, '0');
+
+		while (curPtr < str.size())
+		{
+			digit[strIdx] = str[curPtr];
+
+			if (strIdx == basePow-1)
+			{
+				this->mantissa.push_back(parseInt(digit));
+				digit = std::string(basePow, '0');
+			}
+
+			curPtr++;
+			strIdx++;
+			strIdx %= basePow;
+		}
+
+		// just in case
+		this->mantissa.push_back(parseInt(digit));
+	
 		// count exponent based on dot position
-		this->exponent = countExp(digitCounter);
+		this->exponent = ceil(digitCounter / (float)basePow);
+		this->normalize();
 	}
 
 	std::string preprocStr(const char* s)
 	{
 		std::string str = std::string(s);
 		int idx = 0;
-		bool notNull = false;
+		bool prevIsNull = true;
 
 		// remove all underscores and leading zeros
-		for (char c : str)
+		while(idx < str.length())
 		{
-			if (c == '_' || (notNull && c == '0'))
+			char c = str[idx];
+
+			if (c == '_' || (prevIsNull && c == '0'))
 			{
-				notNull = c != '0';
+				prevIsNull = c == '0';
 				str = str.erase(idx, 1);
 				idx--;
 			}
+
+			if (c != '0')
+				prevIsNull = false;
+
 			idx++;
 		}
 		return str;
 	}
 
-	int countExp(int preDotDigs) 
+	void normalize()
 	{
-		if (preDotDigs) 
+		// remove leading zeros and move them to exponent
+		for (int32_t digit : this->mantissa) 
 		{
-			return preDotDigs;
+			if (digit == 0) 
+			{
+				this->mantissa.erase( mantissa.begin() );
+				this->exponent--;
+			}
+			else 
+			{
+				break;
+			}
 		}
 
-		int exp = 0;
-		for (int i=0; i < this->mantissa.size() && !this->mantissa[i++]; exp--);
-		return exp;
+		std::vector<int32_t> backwardMantissa = std::vector<int32_t>(mantissa);
+		std::reverse(backwardMantissa.begin(), backwardMantissa.end());
+		
+		for (int32_t digit : backwardMantissa)
+		{
+			if (digit == 0) 
+			{
+				mantissa.pop_back();
+			}
+			else 
+			{
+				break;
+			}
+		}
 	}
 
 	double toDouble() 
@@ -125,9 +128,7 @@ public:
 		{
 			return 0;
 		}
-
 		double d = parseDouble(this->mantissa, this->exponent, pow(10, basePow) );
-		std::cout << "parsed: " << d << std::endl;
 		return d;
 	}
 
@@ -137,9 +138,25 @@ public:
 	{
 
 	}
-	
+
+	BigFloat& operator-()
+	{
+		this->isNeg = !this->isNeg;
+		return *this;
+	}
+
+	// treats numbers as unsigned btw
 	BigFloat& operator+(BigFloat& obj)
 	{
+		if (this->isNeg && !obj.isNeg)
+		{
+			obj - (-*(this));
+		}
+		else if (!this->isNeg && obj.isNeg)
+		{
+			*(this) - -obj;
+		}
+	
 		bool overflow = false;
 		int base = pow(10, basePow);
 
@@ -153,13 +170,13 @@ public:
 
 		// move pointer to match commas
 		if (commaDiff < 0)
-			m1ptr -= commaDiff;
+			m1ptr += commaDiff;
 		else 
-			m2ptr -= commaDiff;
+			m2ptr += commaDiff;
 
 		std::vector<int32_t> newMantissa;
 
-		while (m1ptr < mantissa1.size() || m2ptr < mantissa1.size() || overflow)
+		while (m1ptr < mantissa1.size() || m2ptr < mantissa2.size() || overflow)
 		{
 			int32_t digit1;
 			int32_t digit2;
@@ -175,7 +192,7 @@ public:
 				digit2 = mantissa2[m2ptr];
 
 			int32_t res = digit1 + digit2 + overflow;
-			std::cout << digit1 << " + " << digit2 << " = " << res << " add overflow: " << overflow << std::endl;
+			//std::cout << digit1 << " + " << digit2 << " = " << res << " add overflow: " << overflow << std::endl;
 			overflow = res >= base;
 			
 			res = res % base;
@@ -186,7 +203,6 @@ public:
 		}
 
 		this->mantissa = newMantissa;
-
 		return *this;
 	}
 
@@ -219,21 +235,18 @@ public:
 		std::vector<int32_t> digits = obj.mantissa;
 
 		int digCount = digits.size();
-		std::string repr = std::string();
+		std::string repr = "0.";
 		
-		repr[0] = 0;
-		std::string z = std::string();
-		for (int i = digCount-1; i >= 0; i--)
+		for (int32_t dig : obj.mantissa)
 		{
-			std::string str = std::string(parseString(obj.mantissa[i], basePow));
-			repr += str;
-			z = "0.";
-			z += repr;
-			z += "e";
-			z += parseString(obj.exponent);
+			std::string digit = std::string(parseString(dig));
+			repr += digit;
 		}
-		return os << z;
+		repr += "(B)";
+		repr += parseString(obj.exponent);
+		return os << repr;
 	}
+
 	/*
 	friend istream& operator >> (istream& out, BigFloat& obj)
 	{
