@@ -163,16 +163,16 @@ public:
 		std::vector<std::int32_t> mantissa1 = this->mantissa;
 		std::vector<std::int32_t> mantissa2 = obj.mantissa;
 
-		int m1ptr = 0;
-		int m2ptr = 0;
+		int m1ptr = mantissa1.size()-1;
+		int m2ptr = mantissa2.size()-1;
 
-		int commaDiff = (this->exponent - obj.exponent);
+		int commaDiff = ((mantissa1.size() - this->exponent) - (mantissa2.size() - obj.exponent));
 
 		// move pointer to match commas
-		if (commaDiff < 0)
-			m1ptr += commaDiff;
-		else 
+		if (commaDiff > 0)
 			m2ptr += commaDiff;
+		else 
+			m1ptr += -commaDiff;
 
 		std::vector<int32_t> newMantissa;
 
@@ -196,20 +196,83 @@ public:
 			overflow = res >= base;
 			
 			res = res % base;
-			newMantissa.push_back(res);
+			newMantissa.insert(newMantissa.begin(), res);
 
-			m1ptr++;
-			m2ptr++;
+			m1ptr--;
+			m2ptr--;
 		}
 
 		this->mantissa = newMantissa;
 		return *this;
 	}
 
-	BigFloat* operator-(const BigFloat obj)
+	BigFloat& operator-(BigFloat& obj)
 	{
-		// code that will decrease this by obj
-		return this;
+		auto getDigit = [](int mptr, std::vector<int32_t> mantissa) 
+		{ 
+			return (mptr < 0 || mptr >= mantissa.size()) ? 0 : mantissa[mptr];  
+		};
+
+		// -a -b
+		if (this->isNeg && !obj.isNeg)
+		{
+			obj + (-*(this));
+		}
+
+		// a - (-b)
+		else if (!this->isNeg && obj.isNeg)
+		{
+			*(this) + -obj;
+		}
+
+		int base = pow(10, basePow);
+
+		std::vector<std::int32_t> mantissa1 = this->mantissa;
+		std::vector<std::int32_t> mantissa2 = obj.mantissa;
+
+		int m1ptr = mantissa1.size()-1;
+		int m2ptr = mantissa2.size()-1;
+
+		int commaDiff = ( (mantissa1.size() - this->exponent) - (mantissa2.size() - obj.exponent));
+
+		// move pointer to match commas
+		// first number has comma commaDiff positions further to right
+
+		if (commaDiff > 0)
+			m2ptr += commaDiff;
+		else
+			m1ptr += -commaDiff;
+
+		std::vector<int32_t> newMantissa;
+
+		bool borrow = false;
+
+		while (m1ptr < mantissa1.size() || m2ptr < mantissa2.size())
+		{
+			int32_t digit1 = getDigit(m1ptr, mantissa1);
+			int32_t digit2 = getDigit(m2ptr, mantissa2);
+
+			if (borrow)
+			{
+				digit1--;
+				borrow = false;
+			}
+
+			if (digit1 < digit2) 
+			{				
+				borrow = true;
+				digit1 += pow(10, basePow);
+			}
+
+			int32_t res = digit1 - digit2;
+			newMantissa.insert(newMantissa.begin(), res);
+
+			m1ptr--;
+			m2ptr--;
+		}
+
+		this->mantissa = newMantissa;
+		return *this;
 	}
 
 	BigFloat* operator*(const BigFloat obj)
@@ -228,6 +291,37 @@ public:
 	{
 		// code that will take remainder from dividing this by obj
 		return this;
+	}
+
+	bool operator==(BigFloat& a) 
+	{
+		return this->exponent == a.exponent && this->isNeg == a.isNeg && this->mantissa == a.mantissa;
+	}
+
+	bool operator < (BigFloat& obj) 
+	{
+		// different sign
+		if (this->isNeg != obj.isNeg) 
+		{
+			return this->isNeg;
+		}
+
+		// same exponent
+		if (this->exponent == obj.exponent)
+		{
+			return this->mantissa < obj.mantissa;
+		}
+
+		// both negative
+		if (this->isNeg) 
+		{
+			return this->exponent > obj.exponent;
+		}
+		else 
+		// both positive
+		{
+			this->exponent < obj.exponent;
+		}
 	}
 
 	friend std::ostream& operator << (std::ostream& os, BigFloat& obj)
