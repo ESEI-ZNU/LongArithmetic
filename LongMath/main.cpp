@@ -11,7 +11,7 @@ int main()
 	BigFloat num = BigNum   (12.00_23);
 
 	//cout <<"double: " << num.toDouble() << endl;
-	cout <<"my repr: " << num2 + num << endl;
+	cout <<"my repr: " << num - num2 << endl;
 
 	const char tests[][10] = { ".123", "312", "12.4312", "312.313", "234.13", "4.134" };
 

@@ -8,6 +8,23 @@
 #define BigNum(x) BigFloat(#x)
 #define basePow 2
 
+struct ParseException : public std::exception
+{
+	private:
+		std::string cause;
+
+	public:
+		ParseException(std::string cause) 
+		{
+			this->cause = cause;
+		}
+
+		const std::string getCause() const throw ()
+		{
+			return cause;
+		}
+};
+
 class BigFloat
 {
 protected:
@@ -17,10 +34,16 @@ protected:
 
 public:
 
+	BigFloat() {}
+
 	BigFloat(const char* repr)
 	{
 		// normalize string
 		std::string str = preprocStr(repr);
+		if (str.at(0) == '-') 
+		{
+			isNeg = true;
+		}
 
 		int digitCounter = str.size();
 		int dotIdx = str.find('.');
@@ -139,10 +162,19 @@ public:
 
 	}
 
+	// copy constructor
+	BigFloat(const BigFloat& obj)
+	{
+		this->exponent = obj.exponent;
+		this->mantissa = obj.mantissa;
+		this->isNeg = obj.isNeg;
+	}
+
 	BigFloat& operator-()
 	{
-		this->isNeg = !this->isNeg;
-		return *this;
+		BigFloat copy = BigFloat(*this);
+		copy.isNeg = !copy.isNeg;
+		return copy;
 	}
 
 	// treats numbers as unsigned btw
@@ -208,6 +240,9 @@ public:
 
 	BigFloat& operator-(BigFloat& obj)
 	{
+		bool invert = 0;
+		int base = pow(10, basePow);
+
 		auto getDigit = [](int mptr, std::vector<int32_t> mantissa) 
 		{ 
 			return (mptr < 0 || mptr >= mantissa.size()) ? 0 : mantissa[mptr];  
@@ -225,15 +260,31 @@ public:
 			*(this) + -obj;
 		}
 
-		int base = pow(10, basePow);
+		BigFloat top;
+		BigFloat bottom;
 
-		std::vector<std::int32_t> mantissa1 = this->mantissa;
-		std::vector<std::int32_t> mantissa2 = obj.mantissa;
+		if (*this > obj)
+		{
+			top = *this;
+			bottom = obj;
+		}
+		else
+		{
+			top = obj;
+			bottom = *this;
+			invert = true;
+		}
+
+		std::vector<std::int32_t> mantissa1 = top.mantissa;
+		std::vector<std::int32_t> mantissa2 = bottom.mantissa;
+
+		int32_t exp1 = top.exponent;
+		int32_t exp2 = bottom.exponent;
 
 		int m1ptr = mantissa1.size()-1;
 		int m2ptr = mantissa2.size()-1;
 
-		int commaDiff = ( (mantissa1.size() - this->exponent) - (mantissa2.size() - obj.exponent));
+		int commaDiff = ( (mantissa1.size() - exp1) - (mantissa2.size() - exp2));
 
 		// move pointer to match commas
 		// first number has comma commaDiff positions further to right
@@ -272,6 +323,9 @@ public:
 		}
 
 		this->mantissa = newMantissa;
+		if (invert)
+			this->isNeg = !this->isNeg;
+
 		return *this;
 	}
 
@@ -295,10 +349,12 @@ public:
 
 	bool operator==(BigFloat& a) 
 	{
-		return this->exponent == a.exponent && this->isNeg == a.isNeg && this->mantissa == a.mantissa;
+		return	this->isNeg == a.isNeg			&&
+				this->exponent == a.exponent	&& 
+				this->mantissa == a.mantissa;
 	}
 
-	bool operator < (BigFloat& obj) 
+	bool operator<(BigFloat& obj) 
 	{
 		// different sign
 		if (this->isNeg != obj.isNeg) 
@@ -317,19 +373,30 @@ public:
 		{
 			return this->exponent > obj.exponent;
 		}
-		else 
 		// both positive
+		else 
 		{
-			this->exponent < obj.exponent;
+			return this->exponent < obj.exponent;
 		}
 	}
 
-	friend std::ostream& operator << (std::ostream& os, BigFloat& obj)
+	bool operator!=(BigFloat& obj) 
+	{
+		return !(*this == obj);
+	}
+
+	bool operator>(BigFloat& obj) 
+	{
+		return *this != obj && !(*this < obj);
+	}
+
+	friend std::ostream& operator<<(std::ostream& os, BigFloat& obj)
 	{
 		std::vector<int32_t> digits = obj.mantissa;
 
 		int digCount = digits.size();
-		std::string repr = "0.";
+
+		std::string repr = obj.isNeg ? "-0." : "+0.";
 		
 		for (int32_t dig : obj.mantissa)
 		{
@@ -340,17 +407,4 @@ public:
 		repr += parseString(obj.exponent);
 		return os << repr;
 	}
-
-	/*
-	friend istream& operator >> (istream& out, BigFloat& obj)
-	{
-		long l;
-		out >> l;
-
-		// Todo:
-		// initialize object
-
-		return out;
-	}*/
-
 };
