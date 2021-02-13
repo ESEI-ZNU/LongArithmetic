@@ -34,9 +34,14 @@ protected:
 
 public:
 
-	BigFloat() {}
+	BigFloat() {};
 
 	BigFloat(const char* repr)
+	{
+		*this = repr;
+	}
+
+	BigFloat operator = (const char* repr)
 	{
 		// normalize string
 		std::string str = preprocStr(repr);
@@ -48,7 +53,7 @@ public:
 		int digitCounter = str.size();
 		int dotIdx = str.find('.');
 
-		if (dotIdx != -1) 
+		if (dotIdx != -1)
 		{
 			digitCounter = dotIdx;
 			str = str.erase(dotIdx, 1);
@@ -63,7 +68,7 @@ public:
 		{
 			digit[strIdx] = str[curPtr];
 
-			if (strIdx == basePow-1)
+			if (strIdx == basePow - 1)
 			{
 				this->mantissa.push_back(parseInt(digit));
 				digit = std::string(basePow, '0');
@@ -76,10 +81,12 @@ public:
 
 		// just in case
 		this->mantissa.push_back(parseInt(digit));
-	
+
 		// count exponent based on dot position
 		this->exponent = ceil(digitCounter / (float)basePow);
 		this->normalize();
+
+		return *this;
 	}
 
 	std::string preprocStr(const char* s)
@@ -406,5 +413,23 @@ public:
 		repr += "(B)";
 		repr += parseString(obj.exponent);
 		return os << repr;
+	}
+
+	
+	friend std::istream& operator >> (std::istream& out, BigFloat& obj)
+	{	
+		std::string repr = std::string();
+		char c;
+		while (1) 
+		{
+			out.get(c);
+
+			if (c == 10)
+				break;
+			repr.push_back(c);
+		}
+		obj = repr.c_str();
+	
+		return out;
 	}
 };
