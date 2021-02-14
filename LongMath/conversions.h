@@ -15,26 +15,25 @@ int countDigits(long l)
 	return i;
 }
 
-// broken
-std::string parseString(int val, int i) 
+std::string parseString(int val, int charCount) 
 {
 	int base = 10;
 
-	std::string out = std::string();
+	std::string out = std::string("0", charCount);
 
 	while (val)
 	{
-		i--;
+		charCount--;
 		char num = val % (base);
-		out[i] = 48 + num;
+		out[charCount] = 48 + num;
 		val /= base;
 	}
 
 	// fill left digits with 0
-	while (i > 0)
+	while (charCount > 0)
 	{
-		i--;
-		out[i] = '0';
+		charCount--;
+		out[charCount] = '0';
 	}
 	return out;
 }

@@ -14,6 +14,8 @@ struct ParseException : public std::exception
 		std::string cause;
 
 	public:
+		ParseException() {}
+
 		ParseException(std::string cause) 
 		{
 			this->cause = cause;
@@ -27,6 +29,7 @@ struct ParseException : public std::exception
 
 class BigFloat
 {
+
 protected:
 	bool isNeg = false;
 	std::vector<std::int32_t> mantissa;
@@ -84,9 +87,8 @@ public:
 
 		// count exponent based on dot position
 		this->exponent = ceil(digitCounter / (float)basePow);
-		this->normalize();
-
-		return *this;
+		
+		return this->normalize();
 	}
 
 	std::string preprocStr(const char* s)
@@ -94,28 +96,50 @@ public:
 		std::string str = std::string(s);
 		int idx = 0;
 		bool prevIsNull = true;
+		bool dotPresent = false;
+	
+		auto isValid = [](char c)
+		{
+			return ( (c > 47 && c < 58) || c == '.' || c == '_' || c == '-');
+		};
 
 		// remove all underscores and leading zeros
-		while(idx < str.length())
+		while (idx < str.length())
 		{
 			char c = str[idx];
 
-			if (c == '_' || (prevIsNull && c == '0'))
+			if (c == '_' || c == '\'')
 			{
-				prevIsNull = c == '0';
-				str = str.erase(idx, 1);
-				idx--;
+				str.erase(idx, 1);
+				continue;
 			}
 
-			if (c != '0')
-				prevIsNull = false;
+			if (!isValid(c))
+				throw ParseException("Invalid character");
+
+			if (c == '-' && idx != 0) 
+				throw ParseException("Minus at wrong position");
+
+			if (c == '.' && dotPresent)
+				throw ParseException("Duplicated dot");
+			
+			dotPresent = dotPresent || c == '.';
+
+			if (prevIsNull && c == '0')
+			{
+				prevIsNull = true;
+				str = str.erase(idx, 1);
+				continue;
+			}
+
+			prevIsNull = prevIsNull && c == '0';
 
 			idx++;
 		}
 		return str;
 	}
 
-	void normalize()
+	BigFloat& normalize()
 	{
 		// remove leading zeros and move them to exponent
 		for (int32_t digit : this->mantissa) 
@@ -145,6 +169,7 @@ public:
 				break;
 			}
 		}
+		return *this;
 	}
 
 	double toDouble() 
@@ -162,11 +187,9 @@ public:
 		return d;
 	}
 
-	// todo:
-	// add numeric constructor
-	BigFloat(long value)
+	BigFloat(double value)
 	{
-
+		*this = std::to_string(value).c_str();
 	}
 
 	// copy constructor
@@ -181,7 +204,7 @@ public:
 	{
 		BigFloat copy = BigFloat(*this);
 		copy.isNeg = !copy.isNeg;
-		return copy;
+		return copy.normalize();
 	}
 
 	// treats numbers as unsigned btw
@@ -242,7 +265,7 @@ public:
 		}
 
 		this->mantissa = newMantissa;
-		return *this;
+		return this->normalize();
 	}
 
 	BigFloat& operator-(BigFloat& obj)
@@ -252,7 +275,7 @@ public:
 
 		auto getDigit = [](int mptr, std::vector<int32_t> mantissa) 
 		{ 
-			return (mptr < 0 || mptr >= mantissa.size()) ? 0 : mantissa[mptr];  
+			return (mptr >= 0 && mptr < mantissa.size()) ? mantissa[mptr] : 0;  
 		};
 
 		// -a -b
@@ -333,32 +356,53 @@ public:
 		if (invert)
 			this->isNeg = !this->isNeg;
 
-		return *this;
+		return this->normalize();
 	}
 
-	BigFloat* operator*(const BigFloat obj)
+	BigFloat& operator*(const BigFloat obj)
 	{
 		// code that will multiply this by obj
-		return this;
+		return this->normalize();
 	}
 
-	BigFloat* operator/(const BigFloat obj)
+	BigFloat& operator/(const BigFloat obj)
 	{
 		// code that will divide this by obj
-		return this;
+		return this->normalize();
 	}
 
-	BigFloat* operator%(const BigFloat obj)
+	BigFloat& operator%(const BigFloat obj)
 	{
 		// code that will take remainder from dividing this by obj
-		return this;
+		return this->normalize();
 	}
 
 	bool operator==(BigFloat& a) 
 	{
-		return	this->isNeg == a.isNeg			&&
-				this->exponent == a.exponent	&& 
-				this->mantissa == a.mantissa;
+		if (this->isNeg != a.isNeg)
+			return false;
+
+		if (this->exponent != a.exponent)
+			return false;
+
+		if (this->mantissa != a.mantissa) 
+		{
+			BigFloat a1 = *this;
+			BigFloat a2 = a;
+			a1.normalize();
+			a2.normalize();
+
+			BigFloat diff = a1 - a2;
+			diff.abs();
+			BigFloat maxDiff = BigNum(0.000001);
+			return diff.normalize() < maxDiff.normalize();
+		}
+
+		return true;
+	}
+	void abs() 
+	{
+		this->isNeg = false;
 	}
 
 	bool operator<(BigFloat& obj) 
@@ -394,7 +438,28 @@ public:
 
 	bool operator>(BigFloat& obj) 
 	{
-		return *this != obj && !(*this < obj);
+		// different sign
+		if (this->isNeg != obj.isNeg)
+		{
+			return !this->isNeg;
+		}
+
+		// same exponent
+		if (this->exponent == obj.exponent)
+		{
+			return this->mantissa > obj.mantissa;
+		}
+
+		// both negative
+		if (this->isNeg)
+		{
+			return this->exponent < obj.exponent;
+		}
+		// both positive
+		else
+		{
+			return this->exponent > obj.exponent;
+		}
 	}
 
 	friend std::ostream& operator<<(std::ostream& os, BigFloat& obj)
@@ -407,7 +472,10 @@ public:
 		
 		for (int32_t dig : obj.mantissa)
 		{
-			std::string digit = std::string(parseString(dig));
+			if (dig < 0)
+				dig = -dig;
+
+			std::string digit = std::string(parseString(dig, basePow));
 			repr += digit;
 		}
 		repr += "(B)";
@@ -415,7 +483,6 @@ public:
 		return os << repr;
 	}
 
-	
 	friend std::istream& operator >> (std::istream& out, BigFloat& obj)
 	{	
 		std::string repr = std::string();

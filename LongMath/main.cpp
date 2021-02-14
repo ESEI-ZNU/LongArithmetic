@@ -3,27 +3,117 @@
 
 using namespace std;
 
+void runTest(string testName, string operation, bool (*check)(BigFloat, double, BigFloat, double))
+{
+	int i = 0;
+
+	const char set1[][10] = {
+		".123",
+		//"312", 
+		//"12.4312", 
+		//"312.313", 
+		//"234.13", 
+		"-4.134",
+		"1.123"
+	};
+
+	const char set2[][10] = {
+		"123.31",
+		"-123.321",
+		"534566.24",
+		//".123",
+		"-42.234",
+		".123",
+	};
+
+	for (const char* string : set1)
+	{
+		BigFloat bf1 = BigFloat(string);
+		double dbl1 = std::stod(string);
+
+		for (const char* strng1 : set2)
+		{
+			double dbl2 = stod(strng1);
+			BigFloat bf2 = BigFloat(strng1);
+
+			cout << testName <<" " << i << ": \t"
+				<< bf1 << "\t" << operation 
+				<< "\t"
+				<< bf2 << "\t" <<
+				(((*check)(bf1, dbl1, bf2, dbl2)) ? "PASSED" : "\tFAILED") << endl;
+
+			i++;
+		}
+	}
+}
+
+bool checkCmpEq(BigFloat bf1, double db1, BigFloat bf2, double db2) 
+{
+	return ((bf1 == bf2) == (db1 == db2));
+}
+
+bool checkCmpLess(BigFloat bf1, double db1, BigFloat bf2, double db2)
+{
+	return ((bf1 < bf2) == (db1 < db2));
+}
+
+bool checkCmpGrt(BigFloat bf1, double db1, BigFloat bf2, double db2)
+{
+	return ((bf1 > bf2) == (db1 > db2));
+}
+
 
 int main()
 {
-	// write tests here
+	srand(time(0));
+
 	BigFloat num2 = BigNum(9_91.11_11_1);
-	BigFloat num = BigNum   (12.00_23);
+	BigFloat num = BigNum (9_91.11_11_10000001);
+	BigFloat _num = BigNum (.0123);
 
-	//cout <<"double: " << num.toDouble() << endl;
-	BigFloat n3;
-	cin >> n3;
+	cout << _num << " double: " << _num.toDouble() << endl;
 
-	cout <<"my repr: " << n3 << endl;
+	//runTest("Equality test", "==", checkCmpEq);
+	//runTest("Less test", "<", checkCmpLess);
+	//runTest("Greater test", ">", checkCmpGrt);
 
-	const char tests[][10] = { ".123", "312", "12.4312", "312.313", "234.13", "4.134" };
+	const char set1[][10] = { 
+		".123", 
+		//"312", 
+		//"12.4312", 
+		//"312.313", 
+		//"234.13", 
+		//"4.134",
+		"1.123"
+	};
 
-	for (const char* string : tests) 
+	const char set2[][10] = {
+		"123.31",
+		//"123.321",
+		//"534566.24",
+		//".123",
+		"42.234"
+	};
+
+	cout <<
+		endl <<
+		string(20, '-') <<
+		" Representation and convertions "
+		<< string(20, '-')
+		<< endl << endl;
+
+	int i = 0;
+	for (const char* string : set1)
 	{
-		cout << string << "\t | " << 
-			BigFloat(string).toDouble() << 
-			"\t = "  << 
-			std::stod(string) << "\t " << 
-			(BigFloat(string).toDouble() == std::stod(string)) << endl;
+		BigFloat bf = BigFloat(string);
+		double dbl = std::stod(string);
+
+		cout << "[ToDouble Representation test] " << i << ": \t"
+			<< bf << "\t== " << dbl << ", \t" << 
+			( (dbl == bf.toDouble())?"PASSED" : "FAILED" )<< endl;
+
+		i++;
 	}
+
+
 }
