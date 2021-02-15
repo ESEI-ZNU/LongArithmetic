@@ -31,17 +31,34 @@ class BigFloat
 {
 
 protected:
+
 	bool isNeg = false;
 	std::vector<std::int32_t> mantissa;
 	int32_t exponent = 0;
 
 public:
 
+	// default constructor
 	BigFloat() {};
 
+	// string constructor
 	BigFloat(const char* repr)
 	{
 		*this = repr;
+	}
+
+	// numeric constructor
+	BigFloat(double value)
+	{
+		*this = std::to_string(value).c_str();
+	}
+
+	// copy constructor
+	BigFloat(const BigFloat& obj)
+	{
+		this->exponent = obj.exponent;
+		this->mantissa = obj.mantissa;
+		this->isNeg = obj.isNeg;
 	}
 
 	BigFloat operator = (const char* repr)
@@ -139,17 +156,25 @@ public:
 		return str;
 	}
 
+	void abs()
+	{
+		this->isNeg = false;
+	}
+
 	BigFloat& normalize()
 	{
 		// remove leading zeros and move them to exponent
-		for (int32_t digit : this->mantissa) 
+		for (int32_t digit : this->mantissa)
 		{
-			if (digit == 0) 
+			if (digit == 0)
 			{
-				this->mantissa.erase( mantissa.begin() );
-				this->exponent--;
+				this->mantissa.erase(mantissa.begin());
+				if (exponent <= 0)
+				{
+					this->exponent--;
+				}
 			}
-			else 
+			else
 			{
 				break;
 			}
@@ -157,14 +182,14 @@ public:
 
 		std::vector<int32_t> backwardMantissa = std::vector<int32_t>(mantissa);
 		std::reverse(backwardMantissa.begin(), backwardMantissa.end());
-		
+
 		for (int32_t digit : backwardMantissa)
 		{
-			if (digit == 0) 
+			if (digit == 0)
 			{
 				mantissa.pop_back();
 			}
-			else 
+			else
 			{
 				break;
 			}
@@ -172,34 +197,22 @@ public:
 		return *this;
 	}
 
-	double toDouble() 
+	double toDouble()
 	{
-		if (exponent > 127) 
+		if (exponent > 127)
 		{
 			return INFINITY;
 		}
 
-		if (exponent < -127) 
+		if (exponent < -127)
 		{
 			return 0;
 		}
-		double d = parseDouble(this->mantissa, this->exponent, pow(10, basePow) );
+		double d = parseDouble(this->mantissa, this->exponent, pow(10, basePow));
 		return d;
 	}
 
-	BigFloat(double value)
-	{
-		*this = std::to_string(value).c_str();
-	}
-
-	// copy constructor
-	BigFloat(const BigFloat& obj)
-	{
-		this->exponent = obj.exponent;
-		this->mantissa = obj.mantissa;
-		this->isNeg = obj.isNeg;
-	}
-
+	// arithmetic
 	BigFloat& operator-()
 	{
 		BigFloat copy = BigFloat(*this);
@@ -207,16 +220,17 @@ public:
 		return copy.normalize();
 	}
 
-	// treats numbers as unsigned btw
 	BigFloat& operator+(BigFloat& obj)
 	{
 		if (this->isNeg && !obj.isNeg)
 		{
 			obj - (-*(this));
+			return this->normalize();
 		}
 		else if (!this->isNeg && obj.isNeg)
 		{
 			*(this) - -obj;
+			return this->normalize();
 		}
 	
 		bool overflow = false;
@@ -227,6 +241,17 @@ public:
 
 		int m1ptr = mantissa1.size()-1;
 		int m2ptr = mantissa2.size()-1;
+		// 123.321
+		// 0.123321 * 10 ^ 3 = 123.321
+
+		//   123.321
+		//0000.123321
+		//           
+		// 123.321
+		// 1.3
+		//
+		// 123321
+		// 13
 
 		int commaDiff = ((mantissa1.size() - this->exponent) - (mantissa2.size() - obj.exponent));
 
@@ -377,7 +402,8 @@ public:
 		return this->normalize();
 	}
 
-	bool operator==(BigFloat& a) 
+	// comparison
+	bool operator==(BigFloat& a)
 	{
 		if (this->isNeg != a.isNeg)
 			return false;
@@ -399,10 +425,6 @@ public:
 		}
 
 		return true;
-	}
-	void abs() 
-	{
-		this->isNeg = false;
 	}
 
 	bool operator<(BigFloat& obj) 
@@ -462,6 +484,17 @@ public:
 		}
 	}
 
+	bool operator<=(BigFloat& obj) 
+	{
+		return !(*this > obj);
+	}
+
+	bool operator>=(BigFloat& obj)
+	{
+		return !(*this < obj);
+	}
+
+	// IO
 	friend std::ostream& operator<<(std::ostream& os, BigFloat& obj)
 	{
 		std::vector<int32_t> digits = obj.mantissa;
@@ -483,7 +516,7 @@ public:
 		return os << repr;
 	}
 
-	friend std::istream& operator >> (std::istream& out, BigFloat& obj)
+	friend std::istream& operator>>(std::istream& out, BigFloat& obj)
 	{	
 		std::string repr = std::string();
 		char c;
