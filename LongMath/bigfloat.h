@@ -384,12 +384,14 @@ public:
 		return this->normalize();
 	}
 
+	//This is my job(Diana)
 	BigFloat& operator*(const BigFloat obj)
 	{
 		// code that will multiply this by obj
 		return this->normalize();
 	}
-
+	
+	//This is my job(Diana)
 	BigFloat& operator/(const BigFloat obj)
 	{
 		// code that will divide this by obj
