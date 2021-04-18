@@ -396,10 +396,16 @@ public:
 		return this->normalize();
 	}
 
-	BigFloat& operator%(const BigFloat obj)
+	//Sergey
+	BigFloat& operator%(const BigFloat obj) 
 	{
 		// code that will take remainder from dividing this by obj
 		return this->normalize();
+	}
+
+	BigFloat& inverse()
+	{
+
 	}
 
 	// comparison
