@@ -24,6 +24,7 @@
   <ItemGroup>
     <ClInclude Include="bigfloat.h" />
     <ClInclude Include="conversions.h" />
+    <ClInclude Include="ParseException.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

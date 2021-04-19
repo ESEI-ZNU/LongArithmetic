@@ -65,14 +65,11 @@ bool checkCmpGrt(BigFloat bf1, double db1, BigFloat bf2, double db2)
 
 int main()
 {
+	int n = 1;
+	BigFloat n1 = "1232.312";
+	BigFloat n2 = "312.123";
+	cout << n1.mul(n2);
 
-	BigFloat num2 = BigNum(9_91.11_11_1);
-	BigFloat num = BigNum (9_91.11_11_10000001);
-	//BigFloat _num = BigNum (.0123); 
-	BigFloat _num = 321;
-
-	//bool a = _num == "213";
-	cout << (_num <= num) << " double: " << _num.toDouble() << endl;
 
 	//runTest("Equality test", "==", checkCmpEq);
 	//runTest("Less test", "<", checkCmpLess);

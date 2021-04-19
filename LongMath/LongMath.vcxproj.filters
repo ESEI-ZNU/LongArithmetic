@@ -26,5 +26,8 @@
     <ClInclude Include="conversions.h">
       <Filter>Resource Files</Filter>
     </ClInclude>
+    <ClInclude Include="ParseException.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

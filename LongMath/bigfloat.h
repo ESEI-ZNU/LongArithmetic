@@ -4,29 +4,14 @@
 #include <iostream>
 #include <string>
 #include "conversions.h"
+#include "ParseException.h"
 
 #define BigNum(x) BigFloat(#x)
 #define basePow 2
 
-struct ParseException : public std::exception
-{
-	private:
-		std::string cause;
-
-	public:
-		ParseException() {}
-
-		ParseException(std::string cause) 
-		{
-			this->cause = cause;
-		}
-
-		const std::string getCause() const throw ()
-		{
-			return cause;
-		}
-};
-
+/// <summary>
+/// Type for storing big numbers with floating point.
+/// </summary>
 class BigFloat
 {
 
@@ -38,22 +23,33 @@ protected:
 
 public:
 
-	// default constructor
+	/// <summary>
+	/// Default constructor
+	/// </summary>
 	BigFloat() {};
 
-	// string constructor
+	/// <summary>
+	/// Constructor from string
+	/// </summary>
+	/// <param name="repr">Number representation</param>
 	BigFloat(const char* repr)
 	{
 		*this = repr;
 	}
 
-	// numeric constructor
+	/// <summary>
+	/// Constructor from double
+	/// </summary>
+	/// <param name="value">Value to be converted into BigFloat type</param>
 	BigFloat(double value)
 	{
 		*this = std::to_string(value).c_str();
 	}
 
-	// copy constructor
+	/// <summary>
+	/// Copy constructor
+	/// </summary>
+	/// <param name="obj">value to be copied</param>
 	BigFloat(const BigFloat& obj)
 	{
 		this->exponent = obj.exponent;
@@ -61,7 +57,13 @@ public:
 		this->isNeg = obj.isNeg;
 	}
 
-	BigFloat operator = (const char* repr)
+	/// <summary>
+	/// assignment operator. 
+	/// Parses string and assignes it to BigFloat instance
+	/// </summary>
+	/// <param name="repr">string representation of number</param>
+	/// <returns>this instance</returns>
+	BigFloat& operator = (const char* repr)
 	{
 		// normalize string
 		std::string str = preprocStr(repr);
@@ -108,6 +110,11 @@ public:
 		return this->normalize();
 	}
 
+	/// <summary>
+	/// Validate and normalize BigFloat representation
+	/// </summary>
+	/// <param name="s">input string</param>
+	/// <returns></returns>
 	std::string preprocStr(const char* s)
 	{
 		std::string str = std::string(s);
@@ -156,11 +163,22 @@ public:
 		return str;
 	}
 
-	void abs()
+
+	/// <summary>
+	/// changes isNeg value of BigFloat copy to true (positive).
+	/// </summary>
+	/// <param name="obj">BigFloat to get absolute value of</param>
+	/// <returns>new positive instance of BigFloat</returns>
+	friend BigFloat abs(BigFloat obj)
 	{
-		this->isNeg = false;
+		obj.isNeg = false;
+		return obj;
 	}
 
+	/// <summary>
+	/// Normalization function that removes leading zeroes
+	/// </summary>
+	/// <returns>updated instance</returns>
 	BigFloat& normalize()
 	{
 		// remove leading zeros and move them to exponent
@@ -197,6 +215,11 @@ public:
 		return *this;
 	}
 
+	/// <summary>
+	///	cast BigFloat to double
+	/// </summary>
+	/// <returns>double representation of BigFloat</returns>
+	[[deprecated]]
 	double toDouble()
 	{
 		if (exponent > 127)
@@ -212,16 +235,25 @@ public:
 		return d;
 	}
 
-	// arithmetic
-	BigFloat& operator-()
+	
+	/// <summary>
+	/// Unary minus. invert isNeg flag of BigFloat
+	/// </summary>
+	/// <returns>new inverted instance</returns>
+	friend BigFloat operator-(BigFloat obj)
 	{
-		BigFloat copy = BigFloat(*this);
-		copy.isNeg = !copy.isNeg;
-		return copy.normalize();
+		obj.isNeg = !obj.isNeg;
+		return obj;
 	}
 
-	BigFloat& operator+(BigFloat& obj)
+	/// <summary>
+	/// Adds two BigFloat numbers together
+	/// </summary>
+	/// <param name="obj">other BigFloat</param>
+	/// <returns>new instance with value of this object increased by obj</returns>
+	BigFloat operator+(BigFloat obj)
 	{
+	
 		if (this->isNeg && !obj.isNeg)
 		{
 			obj - (-*(this));
@@ -232,7 +264,11 @@ public:
 			*(this) - -obj;
 			return this->normalize();
 		}
-	
+		/*else if (this->isNeg && obj.isNeg) 
+		{
+			return;
+		}*/
+
 		bool overflow = false;
 		int base = pow(10, basePow);
 
@@ -241,18 +277,7 @@ public:
 
 		int m1ptr = mantissa1.size()-1;
 		int m2ptr = mantissa2.size()-1;
-		// 123.321
-		// 0.123321 * 10 ^ 3 = 123.321
-
-		//   123.321
-		//0000.123321
-		//           
-		// 123.321
-		// 1.3
-		//
-		// 123321
-		// 13
-
+		        
 		int commaDiff = ((mantissa1.size() - this->exponent) - (mantissa2.size() - obj.exponent));
 
 		// move pointer to match commas
@@ -293,7 +318,12 @@ public:
 		return this->normalize();
 	}
 
-	BigFloat& operator-(BigFloat& obj)
+	/// <summary>
+	/// Substracts one BigFloat value from other
+	/// </summary>
+	/// <param name="obj">BigFloat to substract from this instance</param>
+	/// <returns>new instance with value of this object decreased by obj</returns>
+	BigFloat operator-(BigFloat obj)
 	{
 		bool invert = 0;
 		int base = pow(10, basePow);
@@ -384,26 +414,110 @@ public:
 		return this->normalize();
 	}
 
-	BigFloat& operator*(const BigFloat obj)
+	[[deprecated]]
+	BigFloat mul(BigFloat& obj) 
 	{
-		// code that will multiply this by obj
-		return this->normalize();
+		int overflow = 0;
+		std::vector<int32_t> newMantissa;
+
+		newMantissa.resize(mantissa.size() + obj.mantissa.size());
+
+		int bottom = 0;
+		for (int32_t dig2 : reverse(obj.mantissa))
+		{
+			int top = 0;
+			for (int32_t dig1 : reverse(mantissa))
+			{
+				std::cout << "add " << top << " to " << bottom << ": " << top + bottom << std::endl;
+				int32_t res = dig1 * dig2 + overflow;
+				overflow = res / pow(10, basePow);
+				int base = pow(10, basePow);
+				res %= base;
+
+				newMantissa.at(top + bottom) = newMantissa.at(top + bottom) += res;
+				top++;
+			}
+
+			if (overflow) 
+			{
+				newMantissa.at(top + bottom + 1) = overflow;
+				overflow = 0;
+			}
+			bottom++;
+		}
+		newMantissa = reverse(newMantissa);
+	
+		int i = newMantissa.size()-1;
+		for (int32_t dig : reverse(newMantissa)) 
+		{
+			int base = pow(10, basePow);
+
+			int32_t res = dig + overflow;
+			overflow = res / base;
+			res %= base;
+			newMantissa[i] = res;
+			i--;
+		}
+
+		BigFloat res;
+		res.mantissa = newMantissa;
+		res.exponent = (this->mantissa.size() - this->exponent) + (obj.mantissa.size() - obj.exponent);
+		return res;
 	}
 
-	BigFloat& operator/(const BigFloat obj)
+	/// <summary>
+	/// Multiplies one BigFloat value by other 
+	/// </summary>
+	/// <param name="obj">BigFloat to multiply by this instance</param>
+	/// <returns>new instance with value of this object multiplied by obj</returns>
+	BigFloat operator*(const BigFloat obj)
+	{
+		BigFloat num1 = *this;
+		BigFloat num2 = obj;
+
+		std::vector<int32_t> mantissa1 = num1.mantissa;
+		std::vector<int32_t> mantissa2 = num2.mantissa;
+		std::vector<int32_t> resultMantissa = std::vector<int32_t>();
+
+		int exp1 = num1.exponent;
+		int exp2 = num2.exponent;
+		int resExp;
+
+		int neg1 = num1.isNeg;
+		int neg2 = num2.isNeg;
+		int resSign;
+		
+		return this->normalize();
+	}
+	
+	/// <summary>
+	/// Divides one BigFloat value by other 
+	/// </summary>
+	/// <param name="obj">BigFloat to divide by this instance</param>
+	/// <returns>new instance with value of this object divided by obj</returns>
+	BigFloat operator/(const BigFloat obj)
 	{
 		// code that will divide this by obj
 		return this->normalize();
 	}
 
-	BigFloat& operator%(const BigFloat obj)
+	/// <summary>
+	/// Gets remainder of division of this instance by obj
+	/// </summary>
+	/// <param name="obj">BigFloat to divide by this instance</param>
+	/// <returns>new instance with value of remainder</returns>
+	BigFloat operator%(const BigFloat obj)
 	{
 		// code that will take remainder from dividing this by obj
 		return this->normalize();
 	}
 
-	// comparison
-	bool operator==(BigFloat& a)
+	/// <summary>
+	/// Checks equality of two BigFloat objects
+	/// </summary>
+	/// <param name="obj">other object</param>
+	/// <returns>whether represented values differ less then maximal allowed amount</returns>
+	bool operator==(BigFloat& obj)
 	{
 		if (this->isNeg != a.isNeg)
 			return false;
@@ -427,6 +541,11 @@ public:
 		return true;
 	}
 
+	/// <summary>
+	/// Checks if left side BigFloat is less then right side
+	/// </summary>
+	/// <param name="obj">right side BigFloat</param>
+	/// <returns>whether left value is less then right value</returns>
 	bool operator<(BigFloat& obj) 
 	{
 		// different sign
@@ -453,11 +572,21 @@ public:
 		}
 	}
 
+	/// <summary>
+	/// Checks if two BigFloats are not equal
+	/// </summary>
+	/// <param name="obj">other BigFloat</param>
+	/// <returns>whether two values are not equal</returns>
 	bool operator!=(BigFloat& obj) 
 	{
 		return !(*this == obj);
 	}
 
+	/// <summary>
+	/// Checks if left side BigFloat is greater then right side
+	/// </summary>
+	/// <param name="obj">right side BigFloat</param>
+	/// <returns>whether left value is greater then right value</returns>
 	bool operator>(BigFloat& obj) 
 	{
 		// different sign
@@ -483,19 +612,34 @@ public:
 			return this->exponent > obj.exponent;
 		}
 	}
-
+	
+	/// <summary>
+	/// Checks if left side BigFloat is less or equal to the right side
+	/// </summary>
+	/// <param name="obj">right side BigFloat</param>
+	/// <returns>whether left value is less or equal to the right value</returns>
 	bool operator<=(BigFloat& obj) 
 	{
 		return !(*this > obj);
 	}
 
+	/// <summary>
+	/// Checks if left side BigFloat is greater or equal to the right side
+	/// </summary>
+	/// <param name="obj">right side BigFloat</param>
+	/// <returns>whether left value is greater or equal to the right value</returns>
 	bool operator>=(BigFloat& obj)
 	{
 		return !(*this < obj);
 	}
 
-	// IO
-	friend std::ostream& operator<<(std::ostream& os, BigFloat& obj)
+	/// <summary>
+	/// Outputs Bigfloat into Stream
+	/// </summary>
+	/// <param name="os">stream instance to output into</param>
+	/// <param name="obj">instance to output</param>
+	/// <returns>same stream instance</returns>
+	friend std::ostream& operator<<(std::ostream& os, BigFloat obj)
 	{
 		std::vector<int32_t> digits = obj.mantissa;
 
@@ -516,7 +660,13 @@ public:
 		return os << repr;
 	}
 
-	friend std::istream& operator>>(std::istream& out, BigFloat& obj)
+	/// <summary>
+	/// Initializes Bigfloat from Stream
+	/// </summary>
+	/// <param name="is">stream instance to initialize from</param>
+	/// <param name="obj">instance to initialize</param>
+	/// <returns>same stream instance</returns>
+	friend std::istream& operator>>(std::istream& is, BigFloat& obj)
 	{	
 		std::string repr = std::string();
 		char c;

@@ -123,6 +123,14 @@ double parseDouble(std::vector<int32_t> mantissa, int exponent, int base)
 	return res;
 }
 
+template <typename T>
+std::vector<T> reverse(std::vector<T> vec) 
+{
+	std::vector<T> reversed = std::vector<T>(vec);
+	std::reverse(reversed.begin(), reversed.end());
+	return reversed;
+}
+
 int32_t parseInt(int start, char* string)
 {
 	return parseInt(start + string);
