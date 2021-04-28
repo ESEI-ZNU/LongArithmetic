@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include "conversions.h"
+#include <tuple>
 
 #define BigNum(x) BigFloat(#x)
 #define basePow 2
@@ -59,6 +60,10 @@ public:
 		this->exponent = obj.exponent;
 		this->mantissa = obj.mantissa;
 		this->isNeg = obj.isNeg;
+	}
+	
+	BigFloat(std::vector<int32_t> mantissa) {
+		this->mantissa = mantissa;
 	}
 
 	BigFloat operator = (const char* repr)
@@ -156,12 +161,12 @@ public:
 		return str;
 	}
 
-	void abs()
-	{
-		this->isNeg = false;
+	friend BigFloat abs(BigFloat other) {
+		other.isNeg = false;
+		return other;
 	}
 
-	BigFloat& normalize()
+	BigFloat normalize()
 	{
 		// remove leading zeros and move them to exponent
 		for (int32_t digit : this->mantissa)
@@ -384,35 +389,35 @@ public:
 		return this->normalize();
 	}
 
-	//This is my job(Diana)
-	BigFloat caratsuba(BigFloat& x, const BigFloat& y)
+	BigFloat operator*(const BigFloat obj)
 	{
+		int exp = exponent + obj.exponent;
 
-		int exp = x.exponent + y.exponent;
-
-		auto len = x.mantissa.size();
+		auto len = this->mantissa.size();
 		vector<int> res(2 * len);
 
-		if (len <= len_f_naive) {
-			return x * y;
+		if (len == 1) {
+			// make elementary multiplication here
+			return *this * obj;
 		}
 
 		auto k = len / 2;
 
-		vector<int32_t> Xr{ x.mantissa.begin(), x.mantissa.begin() + k };
-		vector<int32_t> Xl{ x.mantissa.begin() + k, x.mantissa.end() };
-		vector<int32_t> Yr{ y.mantissa.begin(), y.mantissa.begin() + k };
-		vector<int32_t> Yl{ y.mantissa.begin() + k, y.mantissa.end() };
+		vector<int32_t> Xr{ this->mantissa.begin(), this->mantissa.begin() + k };
+		vector<int32_t> Xl{ this->mantissa.begin() + k, this->mantissa.end() };
+		vector<int32_t> Yr{ obj.mantissa.begin(), obj.mantissa.begin() + k };
+		vector<int32_t> Yl{ obj.mantissa.begin() + k, obj.mantissa.end() };
+
 		BigFloat Xln(Xl);
 		BigFloat Xrn(Xr);
 		BigFloat Yln(Yl);
 		BigFloat Yrn(Yr);
-		count_++;
-		BigFloat P1 = caratsuba(Xln, Yln);
+
+		count_++; // was ist das?
+		BigFloat P1 = Xln * Yln;
 		count_--;
 		count_++;
-		BigFloat  P2 = caratsuba(Xrn, Yrn);
-
+		BigFloat P2 = Xrn * Yrn;
 		count_--;
 		vector<int32_t> Xlr(k);
 		vector<int32_t> Ylr(k);
@@ -421,9 +426,10 @@ public:
 			Xlr[i] = Xln.mantissa[i] + Xrn.mantissa[i];
 			Ylr[i] = Yln.mantissa[i] + Yrn.mantissa[i];
 		}
+
 		BigFloat Xlrn(Xlr); BigFloat Ylrn(Ylr);
 		count_++;
-		BigFloat P3 = caratsuba(Xlrn, Ylrn);
+		BigFloat P3 = Xlrn * Ylrn;
 		count_--;
 
 		for (auto i = 0; i < len; ++i) {
@@ -441,139 +447,38 @@ public:
 		for (auto i = k; i < len + k; ++i) {
 			res[i] += P3.mantissa[i - k];
 		}
+
 		BigFloat resn(res);
 		if (count_ == 0)
-			resn.setExp(exp);
-		return resn;
+			resn.exponent = exp;
 
+		return resn.normalize();
 	}
-	BigFloat& operator*(const BigFloat obj)
-	{
-		// code that will multiply this by obj
-		size_t len = mantissa.size() + obj.mantissa.size(); // максимальная длина нового числа не больше суммы длин перемножаемых чисел
 
-		BigFloat res; // создадим объект для результата
-
-		if ((obj.isNeg && !isNeg) || (!obj.isNeg && isNeg))
-			res.isNeg = true;
-		// res.sign = sign * x.sign; // перемножаем знаки
-		res.mantissa = std::vector<int>(len, 0); // создаём вектор из нулей
-		res.exponent = exponent + obj.exponent; // складываем экспоненты
-
-		// умножаем числа в столбик
-		for (size_t i = 0; i < mantissa.size(); i++)
-			for (size_t j = 0; j < obj.mantissa.size(); j++)
-				res.mantissa[i + j + 1] += mantissa[i] * obj.mantissa[j]; // прибавляем результат произведения цифр из i-го и j-го разрядов
-
-		// в результате такого перемножения в ячейках могли получиться двузначные числа, поэтому нужно выполнить переносы
-		for (size_t i = len - 1; i > 0; i--) {
-			res.mantissa[i - 1] += res.mantissa[i] / 10; // добавляем к более старшему разряду десятки текущего разряда
-			res.mantissa[i] %= 10; // оставляем только единицы у текущего разряда
-		}
-
-		//res.removeZeroes(); // удаляем нули, как в конструкторе из строки, если таковые имеются
-
-	   // return res;
-		*this = res;
-		return this->normalize();
-	}
 	BigFloat inverse() const {
-		if (mantissa.size() == 1 && mantissa[0] == 0)
-			throw std::string("LongDouble LongDouble::inverse() - division by zero!"); // делить на ноль нельзя, поэтому бросим исключение
-
-		BigFloat x(*this); // скопируем число,
-		x.isNeg = false; // сделав его положительным
-
-		BigFloat d(1.0); // создадим то, что будем делить на x
-
-		BigFloat res; // создадит объект для результата
-		res.isNeg = isNeg; // знак результата совпадёт со знаком числа
-		res.exponent = 1; // начнём с единичной экспоненты
-		res.mantissa = std::vector<int>(); // создадим пустой вектор для цифр обратного элемента
-
-		// пока число меньше 1
-		BigFloat b(1.0);
-		while (x < b) {
-			x.exponent++; // будем увеличивать его экспоненту (умножать на 10 фактически)
-			res.exponent++; // и заодно экспоненту результата
-
-		}
-
-		// дальше сдлеаем число d большим x, также умножая его на 10, чтобы получить число 100...0
-		while (d < x)
-			d.exponent++;
-
-		res.exponent -= d.exponent - 1; // подсчитаем реальное количество цифр в целой части
-
-		size_t numbers = 0; // количество уже вычисленных цифр дробной части
-		size_t totalNumbers = divDigits + std::max((int)0, res.exponent); // количество цифр с учётом целой части
-		BigFloat z(0.0);
-		do {
-			int div = 0; // будущая цифра
-
-			// считаем, сколько раз нужно вычесть x из d
-			while (d >= x) {
-				div++;
-				d = d - x;
-				//cout
-				//cout
-				//std::cout<<"d="<<d<<std::endl;
-				//std::cout<<"x="<<x<<std::endl;
-			}
-			//std::cout<<"ok\n";
-						// увеличиваем остаток в 10 раз
-			d.exponent++;
-			// d.removeZeroes();
-			d.normalize();
-			res.mantissa.push_back(div); // записываем сформированную цифру
-			numbers++; // увеличиваем число вычисленных цифр
-
-		} while (d != z && numbers < totalNumbers); // считаем до тех пор, пока не дойдём до нулевого остатка или пока не превысим точность
-
-		return res; // возвращаем результат
+		return BigFloat(1) / *this;
 	}
 
-	//This is my job(Diana)
-	BigFloat& operator/(const BigFloat obj)
-	{
-		BigFloat res = *this * obj.inverse(); // выполняем умножение на обратный элемент
+	std::tuple<BigFloat, BigFloat> divide(BigFloat other) {
 
-		   // избавляемся от записи вида d...dd(9), которая эквивалентна d...dd+1
-		size_t i = res.mantissa.size() - 1 - std::max(0, exponent);
-		size_t n = std::max(0, res.exponent);
-
-		// если в указанном месте девятка, то ищем место, в котором девятки закончатся
-		if (i > n && res.mantissa[i] == 9) {
-			while (i > n && res.mantissa[i] == 9)
-				i--;
-
-			// если дошли до целой части
-			if (res.mantissa[i] == 9) {
-				res.mantissa.erase(res.mantissa.begin() + n, res.mantissa.end());
-				// то удаляем всю вещественную часть
-				BigFloat u(1.0);
-				if (res.isNeg)
-					res = res - u; // и прибавляем 1 (или -1 к отрицательному)
-				else
-					res = res + u;
-			}
-			else {
-				res.mantissa.erase(res.mantissa.begin() + i + 1, res.mantissa.end()); // иначе обрезаем с найденного места
-				res.mantissa[i]++; // и увеличиваем на 1 текущий разряд
-			}
-		}
-
-		//return res;
-	// code that will divide this by obj
-		*this = res;
-		// code that will divide this by obj
-		return this->normalize();
+		BigFloat remainder;
+		BigFloat result;
+		// division logic (long division!!!!!!)
+		return std::tuple<BigFloat, BigFloat>{ result, remainder };
 	}
 
-	BigFloat& operator%(const BigFloat obj)
+	BigFloat operator/(const BigFloat obj)
 	{
-		// code that will take remainder from dividing this by obj
-		return this->normalize();
+		BigFloat result, remainder;
+		std::tie(result, remainder) = divide(obj);
+		return result;
+	}
+
+	BigFloat operator%(const BigFloat obj)
+	{
+		BigFloat result, remainder;
+		std::tie(result, remainder) = divide(obj);
+		return remainder;
 	}
 
 	// comparison
@@ -593,7 +498,7 @@ public:
 			a2.normalize();
 
 			BigFloat diff = a1 - a2;
-			diff.abs();
+			diff = abs(diff);
 			BigFloat maxDiff = BigNum(0.000001);
 			return diff.normalize() < maxDiff.normalize();
 		}
@@ -601,7 +506,7 @@ public:
 		return true;
 	}
 
-	bool operator<(BigFloat& obj) 
+	bool operator<(const BigFloat& obj) 
 	{
 		// different sign
 		if (this->isNeg != obj.isNeg) 
