@@ -519,21 +519,21 @@ public:
 	/// <returns>whether represented values differ less then maximal allowed amount</returns>
 	bool operator==(BigFloat& obj)
 	{
-		if (this->isNeg != a.isNeg)
+		if (this->isNeg != obj.isNeg)
 			return false;
 
-		if (this->exponent != a.exponent)
+		if (this->exponent != obj.exponent)
 			return false;
 
-		if (this->mantissa != a.mantissa) 
+		if (this->mantissa != obj.mantissa)
 		{
 			BigFloat a1 = *this;
-			BigFloat a2 = a;
+			BigFloat a2 = obj;
 			a1.normalize();
 			a2.normalize();
 
 			BigFloat diff = a1 - a2;
-			diff.abs();
+			diff = diff.abs();
 			BigFloat maxDiff = BigNum(0.000001);
 			return diff.normalize() < maxDiff.normalize();
 		}
