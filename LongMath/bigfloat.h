@@ -5,6 +5,10 @@
 #include <string>
 #include "conversions.h"
 #include "ParseException.h"
+#include <tuple>
+#include <ranges>
+
+using namespace std::ranges;
 
 #define BigNum(x) BigFloat(#x)
 #define basePow 2
@@ -50,6 +54,18 @@ public:
 	/// Copy constructor
 	/// </summary>
 	/// <param name="obj">value to be copied</param>
+	BigFloat(int32_t value)
+	{
+		
+	}
+
+	BigFloat(std::vector<int32_t> mantissa, int32_t exponent, bool neg) {
+		isNeg = neg;
+		this->exponent = exponent;
+		this->mantissa = mantissa;
+	}
+
+	// copy constructor
 	BigFloat(const BigFloat& obj)
 	{
 		this->exponent = obj.exponent;
@@ -252,38 +268,34 @@ public:
 	/// <param name="obj">other BigFloat</param>
 	/// <returns>new instance with value of this object increased by obj</returns>
 	BigFloat operator+(BigFloat obj)
+	friend BigFloat operator+(BigFloat x, BigFloat obj)
 	{
+		if (x.isNeg && !obj.isNeg)
+		{
+			obj - (-x);
+			return x.normalize();
+		}
+		else if (!x.isNeg && obj.isNeg)
+		{
+			x - -obj;
+			return x.normalize();
+		}
 	
-		if (this->isNeg && !obj.isNeg)
-		{
-			obj - (-*(this));
-			return this->normalize();
-		}
-		else if (!this->isNeg && obj.isNeg)
-		{
-			*(this) - -obj;
-			return this->normalize();
-		}
-		/*else if (this->isNeg && obj.isNeg) 
-		{
-			return;
-		}*/
-
 		bool overflow = false;
 		int base = pow(10, basePow);
 
-		std::vector<std::int32_t> mantissa1 = this->mantissa;
+		std::vector<std::int32_t> mantissa1 = x.mantissa;
 		std::vector<std::int32_t> mantissa2 = obj.mantissa;
 
-		int m1ptr = mantissa1.size()-1;
-		int m2ptr = mantissa2.size()-1;
-		        
-		int commaDiff = ((mantissa1.size() - this->exponent) - (mantissa2.size() - obj.exponent));
+		int m1ptr = mantissa1.size() - 1;
+		int m2ptr = mantissa2.size() - 1;
+
+		int commaDiff = ((mantissa1.size() - x.exponent) - (mantissa2.size() - obj.exponent));
 
 		// move pointer to match commas
 		if (commaDiff > 0)
 			m2ptr += commaDiff;
-		else 
+		else
 			m1ptr += -commaDiff;
 
 		std::vector<int32_t> newMantissa;
@@ -298,7 +310,7 @@ public:
 			else
 				digit1 = mantissa1[m1ptr];
 
-			if (m2ptr < 0|| m2ptr >= mantissa2.size())
+			if (m2ptr < 0 || m2ptr >= mantissa2.size())
 				digit2 = 0;
 			else
 				digit2 = mantissa2[m2ptr];
@@ -306,7 +318,7 @@ public:
 			int32_t res = digit1 + digit2 + overflow;
 			//std::cout << digit1 << " + " << digit2 << " = " << res << " add overflow: " << overflow << std::endl;
 			overflow = res >= base;
-			
+
 			res = res % base;
 			newMantissa.insert(newMantissa.begin(), res);
 
@@ -314,8 +326,8 @@ public:
 			m2ptr--;
 		}
 
-		this->mantissa = newMantissa;
-		return this->normalize();
+		x.mantissa = newMantissa;
+		return x.normalize();
 	}
 
 	/// <summary>
@@ -328,35 +340,35 @@ public:
 		bool invert = 0;
 		int base = pow(10, basePow);
 
-		auto getDigit = [](int mptr, std::vector<int32_t> mantissa) 
-		{ 
-			return (mptr >= 0 && mptr < mantissa.size()) ? mantissa[mptr] : 0;  
+		auto getDigit = [](int mptr, std::vector<int32_t> mantissa)
+		{
+			return (mptr >= 0 && mptr < mantissa.size()) ? mantissa[mptr] : 0;
 		};
 
 		// -a -b
-		if (this->isNeg && !obj.isNeg)
+		if (x.isNeg && !obj.isNeg)
 		{
-			obj + (-*(this));
+			return obj + -x;
 		}
 
 		// a - (-b)
-		else if (!this->isNeg && obj.isNeg)
+		else if (!x.isNeg && obj.isNeg)
 		{
-			*(this) + -obj;
+			return x + -obj;
 		}
 
 		BigFloat top;
 		BigFloat bottom;
 
-		if (*this > obj)
+		if (x > obj)
 		{
-			top = *this;
+			top = x;
 			bottom = obj;
 		}
 		else
 		{
 			top = obj;
-			bottom = *this;
+			bottom = x;
 			invert = true;
 		}
 
@@ -366,10 +378,10 @@ public:
 		int32_t exp1 = top.exponent;
 		int32_t exp2 = bottom.exponent;
 
-		int m1ptr = mantissa1.size()-1;
-		int m2ptr = mantissa2.size()-1;
+		int m1ptr = mantissa1.size() - 1;
+		int m2ptr = mantissa2.size() - 1;
 
-		int commaDiff = ( (mantissa1.size() - exp1) - (mantissa2.size() - exp2));
+		int commaDiff = ((mantissa1.size() - exp1) - (mantissa2.size() - exp2));
 
 		// move pointer to match commas
 		// first number has comma commaDiff positions further to right
@@ -394,10 +406,10 @@ public:
 				borrow = false;
 			}
 
-			if (digit1 < digit2) 
-			{				
+			if (digit1 < digit2)
+			{
 				borrow = true;
-				digit1 += pow(10, basePow);
+				digit1 += BASE;
 			}
 
 			int32_t res = digit1 - digit2;
@@ -413,92 +425,72 @@ public:
 
 		return this->normalize();
 	}
-
-	[[deprecated]]
-	BigFloat mul(BigFloat& obj) 
-	{
-		int overflow = 0;
-		std::vector<int32_t> newMantissa;
-
-		newMantissa.resize(mantissa.size() + obj.mantissa.size());
-
-		int bottom = 0;
-		for (int32_t dig2 : reverse(obj.mantissa))
-		{
-			int top = 0;
-			for (int32_t dig1 : reverse(mantissa))
-			{
-				std::cout << "add " << top << " to " << bottom << ": " << top + bottom << std::endl;
-				int32_t res = dig1 * dig2 + overflow;
-				overflow = res / pow(10, basePow);
-				int base = pow(10, basePow);
-				res %= base;
-
-				newMantissa.at(top + bottom) = newMantissa.at(top + bottom) += res;
-				top++;
-			}
-
-			if (overflow) 
-			{
-				newMantissa.at(top + bottom + 1) = overflow;
-				overflow = 0;
-			}
-			bottom++;
-		}
-		newMantissa = reverse(newMantissa);
 	
-		int i = newMantissa.size()-1;
-		for (int32_t dig : reverse(newMantissa)) 
-		{
-			int base = pow(10, basePow);
-
-			int32_t res = dig + overflow;
-			overflow = res / base;
-			res %= base;
-			newMantissa[i] = res;
-			i--;
-		}
-
-		BigFloat res;
-		res.mantissa = newMantissa;
-		res.exponent = (this->mantissa.size() - this->exponent) + (obj.mantissa.size() - obj.exponent);
-		return res;
-	}
-
-	/// <summary>
-	/// Multiplies one BigFloat value by other 
-	/// </summary>
-	/// <param name="obj">BigFloat to multiply by this instance</param>
-	/// <returns>new instance with value of this object multiplied by obj</returns>
-	BigFloat operator*(const BigFloat obj)
-	{
-		BigFloat num1 = *this;
-		BigFloat num2 = obj;
-
-		std::vector<int32_t> mantissa1 = num1.mantissa;
-		std::vector<int32_t> mantissa2 = num2.mantissa;
-		std::vector<int32_t> resultMantissa = std::vector<int32_t>();
-
-		int exp1 = num1.exponent;
-		int exp2 = num2.exponent;
-		int resExp;
-
-		int neg1 = num1.isNeg;
-		int neg2 = num2.isNeg;
-		int resSign;
+	friend BigFloat operator*(const BigFloat x, const int64_t y) {
 		
-		return this->normalize();
+		BigFloat result;
+		int32_t overflow = 0;
+
+		for (int64_t digit : x.mantissa | views::reverse) {
+			int64_t composition = digit * y;
+			composition += overflow;
+
+			int32_t remainder = composition % BASE;
+			overflow = (composition - remainder) / BASE;
+			result.mantissa.push_back(remainder);
+		}
+
+		return result;
 	}
-	
-	/// <summary>
-	/// Divides one BigFloat value by other 
-	/// </summary>
-	/// <param name="obj">BigFloat to divide by this instance</param>
-	/// <returns>new instance with value of this object divided by obj</returns>
-	BigFloat operator/(const BigFloat obj)
+
+	friend BigFloat operator*(const BigFloat x, const BigFloat y)
 	{
-		// code that will divide this by obj
-		return this->normalize();
+		// ac * bd = ac     (c+d)*(a+b)-(ac+bd)    bd
+		
+		int32_t exp = exponent + obj.exponent;
+		bool sign = false;
+
+		auto x_len = x.mantissa.size();
+		auto y_len = y.mantissa.size();
+
+		if (x_len == 1 || y_len == 1) {
+			// elementary multiplication 
+			BigFloat res = ( (x_len == 1) ? y * (x.mantissa.at(0)) : x * y.mantissa.at(0));
+			res.exponent = exp;
+			res.isNeg = sign;
+			return res;
+		}
+
+		auto x_k = x_len / 2;
+		auto y_k = y_len / 2;
+
+		BigFloat a({ x.mantissa.begin(),       x.mantissa.begin() + x_k });
+		BigFloat b({ x.mantissa.begin() + x_k, x.mantissa.end()         });
+		BigFloat c({ y.mantissa.begin(),         y.mantissa.begin() + y_k   });
+		BigFloat d({ y.mantissa.begin() + y_k,   y.mantissa.end()           });
+
+		BigFloat ac = a * c;
+		BigFloat bd = b * d;
+		BigFloat mid = (c + d) * (a + b) - (ac + bd);
+
+		ac.exponent += 2;
+		mid.exponent += 1;
+		
+		BigFloat resn;
+
+		resn += ac;
+		resn += mid;
+		resn += bd;
+
+		resn.exponent = exp;
+		resn.isNeg = sign;
+
+		return resn.normalize();
+	}
+
+	BigFloat inverse() const {
+		//picarte's iteration here
+		return 0;
 	}
 
 	/// <summary>
@@ -508,8 +500,7 @@ public:
 	/// <returns>new instance with value of remainder</returns>
 	BigFloat operator%(const BigFloat obj)
 	{
-		// code that will take remainder from dividing this by obj
-		return this->normalize();
+		return x * obj.inverse();
 	}
 
 	/// <summary>
@@ -533,7 +524,7 @@ public:
 			a2.normalize();
 
 			BigFloat diff = a1 - a2;
-			diff = diff.abs();
+			diff = abs(diff);
 			BigFloat maxDiff = BigNum(0.000001);
 			return diff.normalize() < maxDiff.normalize();
 		}
