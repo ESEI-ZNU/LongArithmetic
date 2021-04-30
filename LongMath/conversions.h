@@ -142,3 +142,9 @@ int strlen(char* s)
 	return len;
 }
 
+BigFloat operator%(BigFloat const& a, BigFloat const& b) { return a - (a / b).floor() * b; }
+
+BigFloat operator += (BigFloat& a, BigFloat const b) {
+	return a = a + b;
+}
+

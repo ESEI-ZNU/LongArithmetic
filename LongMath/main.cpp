@@ -106,7 +106,7 @@ int main()
 	int i = 0;
 	for (const char* string : set1)
 	{
-		BigFloat bf = BigFloat(string);
+		BigFloat bf(string);
 		double dbl = std::stod(string);
 
 		cout << "[ToDouble Representation test] " << i << ": \t"

@@ -5,9 +5,14 @@
 #include <string>
 #include "conversions.h"
 #include <tuple>
+#include <ranges>
+
+using namespace std::ranges;
 
 #define BigNum(x) BigFloat(#x)
 #define basePow 2
+
+const int32_t BASE = pow(10, basePow);
 
 struct ParseException : public std::exception
 {
@@ -52,6 +57,17 @@ public:
 	BigFloat(double value)
 	{
 		*this = std::to_string(value).c_str();
+	}
+
+	BigFloat(int32_t value)
+	{
+		
+	}
+
+	BigFloat(std::vector<int32_t> mantissa, int32_t exponent, bool neg) {
+		isNeg = neg;
+		this->exponent = exponent;
+		this->mantissa = mantissa;
 	}
 
 	// copy constructor
@@ -217,53 +233,47 @@ public:
 		return d;
 	}
 
+	// todo
+	BigFloat floor() {
+		return *this;
+	}
+
 	// arithmetic
-	BigFloat& operator-()
+	BigFloat operator-()
 	{
 		BigFloat copy = BigFloat(*this);
 		copy.isNeg = !copy.isNeg;
 		return copy.normalize();
 	}
 
-	BigFloat& operator+(BigFloat& obj)
+	friend BigFloat operator+(BigFloat x, BigFloat obj)
 	{
-		if (this->isNeg && !obj.isNeg)
+		if (x.isNeg && !obj.isNeg)
 		{
-			obj - (-*(this));
-			return this->normalize();
+			obj - (-x);
+			return x.normalize();
 		}
-		else if (!this->isNeg && obj.isNeg)
+		else if (!x.isNeg && obj.isNeg)
 		{
-			*(this) - -obj;
-			return this->normalize();
+			x - -obj;
+			return x.normalize();
 		}
-	
+
 		bool overflow = false;
 		int base = pow(10, basePow);
 
-		std::vector<std::int32_t> mantissa1 = this->mantissa;
+		std::vector<std::int32_t> mantissa1 = x.mantissa;
 		std::vector<std::int32_t> mantissa2 = obj.mantissa;
 
-		int m1ptr = mantissa1.size()-1;
-		int m2ptr = mantissa2.size()-1;
-		// 123.321
-		// 0.123321 * 10 ^ 3 = 123.321
+		int m1ptr = mantissa1.size() - 1;
+		int m2ptr = mantissa2.size() - 1;
 
-		//   123.321
-		//0000.123321
-		//           
-		// 123.321
-		// 1.3
-		//
-		// 123321
-		// 13
-
-		int commaDiff = ((mantissa1.size() - this->exponent) - (mantissa2.size() - obj.exponent));
+		int commaDiff = ((mantissa1.size() - x.exponent) - (mantissa2.size() - obj.exponent));
 
 		// move pointer to match commas
 		if (commaDiff > 0)
 			m2ptr += commaDiff;
-		else 
+		else
 			m1ptr += -commaDiff;
 
 		std::vector<int32_t> newMantissa;
@@ -278,7 +288,7 @@ public:
 			else
 				digit1 = mantissa1[m1ptr];
 
-			if (m2ptr < 0|| m2ptr >= mantissa2.size())
+			if (m2ptr < 0 || m2ptr >= mantissa2.size())
 				digit2 = 0;
 			else
 				digit2 = mantissa2[m2ptr];
@@ -286,7 +296,7 @@ public:
 			int32_t res = digit1 + digit2 + overflow;
 			//std::cout << digit1 << " + " << digit2 << " = " << res << " add overflow: " << overflow << std::endl;
 			overflow = res >= base;
-			
+
 			res = res % base;
 			newMantissa.insert(newMantissa.begin(), res);
 
@@ -294,44 +304,44 @@ public:
 			m2ptr--;
 		}
 
-		this->mantissa = newMantissa;
-		return this->normalize();
+		x.mantissa = newMantissa;
+		return x.normalize();
 	}
 
-	BigFloat& operator-(BigFloat& obj)
+	friend BigFloat operator-(BigFloat x, BigFloat obj)
 	{
 		bool invert = 0;
 		int base = pow(10, basePow);
 
-		auto getDigit = [](int mptr, std::vector<int32_t> mantissa) 
-		{ 
-			return (mptr >= 0 && mptr < mantissa.size()) ? mantissa[mptr] : 0;  
+		auto getDigit = [](int mptr, std::vector<int32_t> mantissa)
+		{
+			return (mptr >= 0 && mptr < mantissa.size()) ? mantissa[mptr] : 0;
 		};
 
 		// -a -b
-		if (this->isNeg && !obj.isNeg)
+		if (x.isNeg && !obj.isNeg)
 		{
-			obj + (-*(this));
+			return obj + -x;
 		}
 
 		// a - (-b)
-		else if (!this->isNeg && obj.isNeg)
+		else if (!x.isNeg && obj.isNeg)
 		{
-			*(this) + -obj;
+			return x + -obj;
 		}
 
 		BigFloat top;
 		BigFloat bottom;
 
-		if (*this > obj)
+		if (x > obj)
 		{
-			top = *this;
+			top = x;
 			bottom = obj;
 		}
 		else
 		{
 			top = obj;
-			bottom = *this;
+			bottom = x;
 			invert = true;
 		}
 
@@ -341,10 +351,10 @@ public:
 		int32_t exp1 = top.exponent;
 		int32_t exp2 = bottom.exponent;
 
-		int m1ptr = mantissa1.size()-1;
-		int m2ptr = mantissa2.size()-1;
+		int m1ptr = mantissa1.size() - 1;
+		int m2ptr = mantissa2.size() - 1;
 
-		int commaDiff = ( (mantissa1.size() - exp1) - (mantissa2.size() - exp2));
+		int commaDiff = ((mantissa1.size() - exp1) - (mantissa2.size() - exp2));
 
 		// move pointer to match commas
 		// first number has comma commaDiff positions further to right
@@ -369,10 +379,10 @@ public:
 				borrow = false;
 			}
 
-			if (digit1 < digit2) 
-			{				
+			if (digit1 < digit2)
+			{
 				borrow = true;
-				digit1 += pow(10, basePow);
+				digit1 += BASE;
 			}
 
 			int32_t res = digit1 - digit2;
@@ -388,97 +398,77 @@ public:
 
 		return this->normalize();
 	}
+	
+	friend BigFloat operator*(const BigFloat x, const int64_t y) {
+		
+		BigFloat result;
+		int32_t overflow = 0;
 
-	BigFloat operator*(const BigFloat obj)
+		for (int64_t digit : x.mantissa | views::reverse) {
+			int64_t composition = digit * y;
+			composition += overflow;
+
+			int32_t remainder = composition % BASE;
+			overflow = (composition - remainder) / BASE;
+			result.mantissa.push_back(remainder);
+		}
+
+		return result;
+	}
+
+	friend BigFloat operator*(const BigFloat x, const BigFloat y)
 	{
-		int exp = exponent + obj.exponent;
+		// ac * bd = ac     (c+d)*(a+b)-(ac+bd)    bd
+		
+		int32_t exp = exponent + obj.exponent;
+		bool sign = false;
 
-		auto len = this->mantissa.size();
-		vector<int> res(2 * len);
+		auto x_len = x.mantissa.size();
+		auto y_len = y.mantissa.size();
 
-		if (len == 1) {
-			// make elementary multiplication here
-			return *this * obj;
+		if (x_len == 1 || y_len == 1) {
+			// elementary multiplication 
+			BigFloat res = ( (x_len == 1) ? y * (x.mantissa.at(0)) : x * y.mantissa.at(0));
+			res.exponent = exp;
+			res.isNeg = sign;
+			return res;
 		}
 
-		auto k = len / 2;
+		auto x_k = x_len / 2;
+		auto y_k = y_len / 2;
 
-		vector<int32_t> Xr{ this->mantissa.begin(), this->mantissa.begin() + k };
-		vector<int32_t> Xl{ this->mantissa.begin() + k, this->mantissa.end() };
-		vector<int32_t> Yr{ obj.mantissa.begin(), obj.mantissa.begin() + k };
-		vector<int32_t> Yl{ obj.mantissa.begin() + k, obj.mantissa.end() };
+		BigFloat a({ x.mantissa.begin(),       x.mantissa.begin() + x_k });
+		BigFloat b({ x.mantissa.begin() + x_k, x.mantissa.end()         });
+		BigFloat c({ y.mantissa.begin(),         y.mantissa.begin() + y_k   });
+		BigFloat d({ y.mantissa.begin() + y_k,   y.mantissa.end()           });
 
-		BigFloat Xln(Xl);
-		BigFloat Xrn(Xr);
-		BigFloat Yln(Yl);
-		BigFloat Yrn(Yr);
+		BigFloat ac = a * c;
+		BigFloat bd = b * d;
+		BigFloat mid = (c + d) * (a + b) - (ac + bd);
 
-		count_++; // was ist das?
-		BigFloat P1 = Xln * Yln;
-		count_--;
-		count_++;
-		BigFloat P2 = Xrn * Yrn;
-		count_--;
-		vector<int32_t> Xlr(k);
-		vector<int32_t> Ylr(k);
+		ac.exponent += 2;
+		mid.exponent += 1;
+		
+		BigFloat resn;
 
-		for (int i = 0; i < k; ++i) {
-			Xlr[i] = Xln.mantissa[i] + Xrn.mantissa[i];
-			Ylr[i] = Yln.mantissa[i] + Yrn.mantissa[i];
-		}
+		resn += ac;
+		resn += mid;
+		resn += bd;
 
-		BigFloat Xlrn(Xlr); BigFloat Ylrn(Ylr);
-		count_++;
-		BigFloat P3 = Xlrn * Ylrn;
-		count_--;
-
-		for (auto i = 0; i < len; ++i) {
-			P3.mantissa[i] -= P2.mantissa[i] + P1.mantissa[i];
-		}
-
-		for (auto i = 0; i < len; ++i) {
-			res[i] = P2.mantissa[i];
-		}
-
-		for (auto i = len; i < 2 * len; ++i) {
-			res[i] = P1.mantissa[i - len];
-		}
-
-		for (auto i = k; i < len + k; ++i) {
-			res[i] += P3.mantissa[i - k];
-		}
-
-		BigFloat resn(res);
-		if (count_ == 0)
-			resn.exponent = exp;
+		resn.exponent = exp;
+		resn.isNeg = sign;
 
 		return resn.normalize();
 	}
 
 	BigFloat inverse() const {
-		return BigFloat(1) / *this;
+		//picarte's iteration here
+		return 0;
 	}
 
-	std::tuple<BigFloat, BigFloat> divide(BigFloat other) {
-
-		BigFloat remainder;
-		BigFloat result;
-		// division logic (long division!!!!!!)
-		return std::tuple<BigFloat, BigFloat>{ result, remainder };
-	}
-
-	BigFloat operator/(const BigFloat obj)
+	friend BigFloat operator/(const BigFloat x, const BigFloat obj)
 	{
-		BigFloat result, remainder;
-		std::tie(result, remainder) = divide(obj);
-		return result;
-	}
-
-	BigFloat operator%(const BigFloat obj)
-	{
-		BigFloat result, remainder;
-		std::tie(result, remainder) = divide(obj);
-		return remainder;
+		return x * obj.inverse();
 	}
 
 	// comparison
