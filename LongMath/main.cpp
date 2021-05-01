@@ -1,4 +1,5 @@
 #include <iostream>
+#include "conversions.h"
 #include "bigfloat.h"
 
 using namespace std;
@@ -9,10 +10,6 @@ void runTest(string testName, string operation, bool (*check)(BigFloat, double, 
 
 	const char set1[][10] = {
 		".123",
-		//"312", 
-		//"12.4312", 
-		//"312.313", 
-		//"234.13", 
 		"-4.134",
 		"1.123"
 	};
@@ -21,7 +18,6 @@ void runTest(string testName, string operation, bool (*check)(BigFloat, double, 
 		"123.31",
 		"-123.321",
 		"534566.24",
-		//".123",
 		"-42.234",
 		".123",
 	};
@@ -66,10 +62,10 @@ bool checkCmpGrt(BigFloat bf1, double db1, BigFloat bf2, double db2)
 int main()
 {
 	int n = 1;
-	BigFloat n1 = "1232.312";
-	BigFloat n2 = "312.123";
-	cout << n1.mul(n2);
+	BigFloat n1 = "1.11111";
+	BigFloat n2 = "2.1";
 
+	std::cout << n1 << " * " << n2 << " = " << n1 * n2;
 
 	//runTest("Equality test", "==", checkCmpEq);
 	//runTest("Less test", "<", checkCmpLess);
@@ -77,23 +73,16 @@ int main()
 
 	const char set1[][10] = { 
 		".123", 
-		//"312", 
-		//"12.4312", 
-		//"312.313", 
-		//"234.13", 
-		//"4.134",
 		"1.123"
 	};
 
 	const char set2[][10] = {
 		"123.31",
-		//"123.321",
-		//"534566.24",
-		//".123",
 		"42.234"
 	};
 
-	cout <<
+
+/*	cout <<
 		endl <<
 		string(20, '-') <<
 		" Representation and convertions "
@@ -108,8 +97,8 @@ int main()
 
 		cout << "[ToDouble Representation test] " << i << ": \t"
 			<< bf << "\t== " << dbl << ", \t" << 
-			( (dbl == bf.toDouble())?"PASSED" : "FAILED" )<< endl;
+			( (dbl == bf.to_double())?"PASSED" : "FAILED" )<< endl;
 
 		i++;
-	}
+	}*/
 }

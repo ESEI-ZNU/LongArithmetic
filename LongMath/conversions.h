@@ -1,6 +1,6 @@
 #pragma once
-#include "bigfloat.h"
 #include <iostream>
+#include <vector>
 
 int getDigit(char c)
 {
@@ -104,19 +104,20 @@ int32_t parseInt(std::string str)
 	return res;
 }
 
-#define basePow 2
-double parseDouble(std::vector<int32_t> mantissa, int exponent, int base)
+#define BASE_POW 2
+
+double parseDouble(std::vector<int32_t> m_mantissa, int m_exponent, int base)
 {
 	double res = 0;
-	int power = mantissa.size();
+	int power = m_mantissa.size();
 	power = -power;
 
-	std::vector<int32_t> backwardMantissa = std::vector<int32_t>(mantissa);
+	std::vector<int32_t> backwardMantissa = std::vector<int32_t>(m_mantissa);
 	std::reverse(backwardMantissa.begin(), backwardMantissa.end());
 
 	for (int32_t dig32 : backwardMantissa)
 	{
-		res += dig32 * pow(pow(10, basePow), (power + exponent));
+		res += dig32 * pow(pow(10, BASE_POW), (power + m_exponent));
 		power++;
 	}
 
@@ -148,11 +149,5 @@ int strlen(char* s)
 	int len = 0;
 	for (; *s++; len++);
 	return len;
-}
-
-BigFloat operator%(BigFloat const& a, BigFloat const& b) { return a - (a / b).floor() * b; }
-
-BigFloat operator += (BigFloat& a, BigFloat const b) {
-	return a = a + b;
 }
 
