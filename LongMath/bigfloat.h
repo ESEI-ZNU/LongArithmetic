@@ -7,9 +7,12 @@
 #include <tuple>
 #include <ranges>
 #include <algorithm>
+#include "conversions.h"
 
 #define BigNum(x) BigFloat(#x)
 #define BASE_POW 2
+
+class BigFloat;
 
 const int32_t BASE = pow(10, BASE_POW);
 
@@ -47,6 +50,8 @@ public:
 	/// <param name="value">Value to be converted into BigFloat type</param>
 	BigFloat(double value)
 	{
+		char* bytes = (char*)&value;
+		int exponent = bytes[1];
 		*this = std::to_string(value).c_str();
 	}
 
@@ -87,6 +92,7 @@ public:
 	/// </summary>
 	/// <param name="x">value to be moved</param>
 
+	
 
 	/// <summary>
 	/// assignment operator. 
@@ -270,13 +276,13 @@ public:
 	{
 		BigFloat result;
 
-		if (x.m_is_negative && !y.m_is_negative)
+		if (x.m_is_negative)
 		{
-			return y - -x;
+			return y - abs(x);
 		}
-		else if (!x.m_is_negative && y.m_is_negative)
+		else if (y.m_is_negative)
 		{
-			return x - -y;
+			return x - abs(y);
 		}
 	
 		auto get_with_rank = [](BigFloat const& x, int i) {
@@ -321,20 +327,19 @@ public:
 	/// <returns>new instance with value of this object decreased by obj</returns>
 	friend BigFloat operator-(BigFloat x, BigFloat y)
 	{
+		if (x.m_is_negative)
+		{
+			return - (abs(x) + y);
+		}
+		else if (y.m_is_negative)
+		{
+			return x + abs(y);
+		}
+		
 		BigFloat result;
 
-		if (x.m_is_negative && !y.m_is_negative)
-		{
-			return y - -x;
-		}
-		else if (!x.m_is_negative && y.m_is_negative)
-		{
-			return x - -y;
-		}
-		bool invert = false;
-
 		if (y > x) {
-			invert = true;
+			result.m_is_negative = true;
 			BigFloat b = x;
 			x = y;
 			y = b;
@@ -373,14 +378,13 @@ public:
 
 		std::reverse(result.m_mantissa.begin(), result.m_mantissa.end());
 
-		if (invert)
-			result = !result;
-
 		return result.normalize();
 	}
 
 	BigFloat floor() {
-		return *this;
+		BigFloat res = *this;
+		res.m_mantissa.erase(res.m_mantissa.begin() + res.m_exponent, res.m_mantissa.end());
+		return res;
 	}
 	
 	/// <summary>
@@ -452,18 +456,27 @@ public:
 			return res;
 		}
 
-		int x_k = std::ceil(x_len / 2.);
-		int y_k = std::ceil(y_len / 2.);
+		int k = std::max(std::ceil(x_len / 2.), std::ceil(y_len / 2.));
 
-		std::vector<int32_t>vec_a({ x.m_mantissa.begin(),       x.m_mantissa.begin() + x_k });
-		std::vector<int32_t>vec_b({ x.m_mantissa.begin() + x_k, x.m_mantissa.end()         });
-		std::vector<int32_t>vec_c({ y.m_mantissa.begin(),       y.m_mantissa.begin() + y_k });
-		std::vector<int32_t>vec_d({ y.m_mantissa.begin() + y_k, y.m_mantissa.end()         });
+		std::vector<int32_t>vec_a(k);
+		std::vector<int32_t>vec_b(k);
+		std::vector<int32_t>vec_c(k);
+		std::vector<int32_t>vec_d(k);
 
-		BigFloat a(vec_a, x_k,         false);
-		BigFloat b(vec_b, x_len - x_k, false);
-		BigFloat c(vec_c, y_k,         false);
-		BigFloat d(vec_d, y_len - y_k, false);
+		auto split = [](BigFloat const& x, int32_t k, std::vector<int32_t>& left, std::vector<int32_t>& right) {
+			std::vector<int32_t>full(2*k);
+			std::copy(x.m_mantissa.begin(), x.m_mantissa.end(), full.end() - x.m_mantissa.size());
+			left = { full.begin(), full.begin() + k };
+			right = { full.begin() + k, full.end() };
+		};
+		
+		split(x, k, vec_a, vec_b);
+		split(y, k, vec_c, vec_d);
+
+		BigFloat a(vec_a, k,         false);
+		BigFloat b(vec_b, k, false);
+		BigFloat c(vec_c, k,         false);
+		BigFloat d(vec_d, k, false);
 
 		BigFloat ac = a * c;
 		BigFloat bd = b * d;
@@ -488,10 +501,7 @@ public:
 		return resn.normalize();
 	}
 
-	BigFloat inverse() const {
-		//picarte's iteration here
-		return 0;
-	}
+	BigFloat inverse() const;
 
 	/// <summary>
 	/// Divide BigFloat by BigFloat. Effectively multiplies by inverse number
@@ -599,6 +609,34 @@ public:
 /// <param name="obj">BigFloat to divide by this instance</param>
 /// <returns>new instance with value of remainder</returns>
 BigFloat operator%(BigFloat const& x, BigFloat const& y) { return x - (x / y).floor() * y; }
+
+BigFloat find_zero(auto f, BigFloat const& _low, BigFloat const& _high, BigFloat const& _tolerance) {
+
+	BigFloat mid = (_low + _high) * 0.5;
+	BigFloat low = f(_low);
+
+	if (abs(low) < _tolerance) {
+		return _low;
+	}
+	if (low * f(mid) < 0) {
+		return find_zero(f, _low, mid, _tolerance);
+	}
+	return find_zero(f, mid, _high, _tolerance);
+}
+
+BigFloat BigFloat::inverse() const {
+	int32_t low = 1 / m_mantissa.at(0);
+	int32_t high = 1 / (m_mantissa.at(0) + 1);
+
+	return find_zero(
+		[this](BigFloat x) -> BigFloat {return x * *this - 1; },
+		low, high, "0.00000000000000000001"
+	);
+	
+}
+
+
+
 
 
 

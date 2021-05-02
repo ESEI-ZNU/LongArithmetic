@@ -7,7 +7,7 @@ int getDigit(char c)
 	return c - 48;
 }
 
-int countDigits(long l) 
+int countDigits(long l)
 {
 	int base = 10;
 	int i = 1;
@@ -15,7 +15,7 @@ int countDigits(long l)
 	return i;
 }
 
-std::string parseString(int val, int charCount) 
+std::string parseString(int val, int charCount)
 {
 	int base = 10;
 
@@ -52,7 +52,7 @@ std::string parseString(int val)
 	{
 		out = std::string(c, '-');
 	}
-	else 
+	else
 	{
 		out = std::string(c, '0');
 	}
@@ -61,7 +61,7 @@ std::string parseString(int val)
 	while (i < c)
 	{
 		num = val % (base);
-		out[c-i-!isNeg] = (48 + num);
+		out[c - i - !isNeg] = (48 + num);
 		val /= base;
 		i++;
 	}
@@ -125,7 +125,7 @@ double parseDouble(std::vector<int32_t> m_mantissa, int m_exponent, int base)
 }
 
 template <typename T>
-std::vector<T> reverse(std::vector<T> vec) 
+std::vector<T> reverse(std::vector<T> vec)
 {
 	std::vector<T> reversed = std::vector<T>(vec);
 	std::reverse(reversed.begin(), reversed.end());
@@ -144,10 +144,11 @@ void concat(char* dest, char* src)
 	*dest = 0;
 }
 
-int strlen(char* s) 
+int strlen(char* s)
 {
 	int len = 0;
 	for (; *s++; len++);
 	return len;
 }
+
 

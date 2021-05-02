@@ -1,5 +1,4 @@
 #include <iostream>
-#include "conversions.h"
 #include "bigfloat.h"
 
 using namespace std;
@@ -64,6 +63,8 @@ int main()
 	int n = 1;
 	BigFloat n1 = "1.11111";
 	BigFloat n2 = "2.1";
+	
+	BigFloat in = n1.inverse();
 
 	std::cout << n1 << " * " << n2 << " = " << n1 * n2;
 
