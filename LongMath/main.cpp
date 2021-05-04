@@ -61,9 +61,12 @@ bool checkCmpGrt(BigFloat bf1, double db1, BigFloat bf2, double db2)
 int main()
 {
 	int n = 1;
-	BigFloat n1 = "1.11111";
+	BigFloat n1 = "0.5";
 	BigFloat n2 = "2.1";
-	
+	BigFloat r = 1000000000000._bf + 100000000._bf;
+
+	std::cout << (0 < 0.0001_bf) << "\n";
+	std::cout << (100000 < 2000._bf) << "\n";
 	BigFloat in = n1.inverse();
 
 	std::cout << n1 << " * " << n2 << " = " << n1 * n2;
