@@ -15,6 +15,7 @@
 class BigFloat;
 
 const int32_t BASE = pow(10, BASE_POW);
+const double INVERSE_BASE = 1 / (double)BASE;
 
 /// <summary>
 /// Type for storing big numbers with floating point.
@@ -305,7 +306,7 @@ public:
 			return x - abs(y);
 		}
 
-		int32_t out_length = std::max(x, y).m_mantissa.size() + abs(x.m_exponent - y.m_exponent);
+		int32_t out_length = std::max(x.m_mantissa.size(), y.m_mantissa.size()) + abs(x.m_exponent - y.m_exponent);
 
 		auto get_aligned = [](int i, BigFloat const& x, BigFloat const& other) {
 
@@ -675,17 +676,17 @@ BigFloat find_zero(auto f, BigFloat const& _low, BigFloat const& _high, BigFloat
 BigFloat BigFloat::inverse() const {
 	BigFloat tmp = *this;
 
-	int32_t exp_dif = std::max(0, ((int)m_mantissa.size()) - m_exponent);
-	tmp.m_exponent += exp_dif;
-	long double sd = m_mantissa.at(0);
+	int32_t exp_dif = m_exponent;
+	tmp.m_exponent = 0;
+	long double sd = m_mantissa.at(0) * INVERSE_BASE;
 	BigFloat low = 1 / sd;
-	BigFloat high = 1 / (sd + 1);
+	BigFloat high = 1 / (sd + INVERSE_BASE);
 
 	return find_zero(
 		[tmp](BigFloat const& x) -> BigFloat {return x * tmp - 1; },
 		low, high, "0.0000001"
 	);
-	tmp.m_exponent -= exp_dif;
+	tmp.m_exponent = exp_dif;
 	return tmp;
 }
 

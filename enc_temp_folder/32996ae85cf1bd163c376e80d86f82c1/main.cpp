@@ -70,6 +70,7 @@ int main()
 	std::cout << (0 < 0.0001_bf) << "\n";
 	std::cout << (100000 < 2000._bf) << "\n";
 	BigFloat in = n1.inverse();
+	std::cout << in << std::endl;
 
 	std::cout << n1 << " * " << n2 << " = " << n1 * n2;
 
