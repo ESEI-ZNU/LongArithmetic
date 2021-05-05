@@ -373,25 +373,26 @@ public:
 			y = b;
 		}
 
-		auto get_relative = [](BigFloat const& x, int i) {
-			int dot = x.m_mantissa.size() - x.m_exponent;
-			int idx = x.m_mantissa.size() - (dot + i) - 1;
-			return x.m_mantissa.size() <= idx ? 0 : x.m_mantissa.at(idx);
+		int32_t out_length = std::max(x.m_mantissa.size(), y.m_mantissa.size()) + abs(x.m_exponent - y.m_exponent);
+
+		auto get_aligned = [](int i, BigFloat const& x, BigFloat const& other) {
+
+			int exp_offset = std::max(0, other.m_exponent - x.m_exponent);
+			return x.defaulting_digit(i - exp_offset, 0);
 		};
 
-		int lb = std::max((x.m_mantissa.size() - x.m_exponent), (y.m_mantissa.size() - y.m_exponent));
-		lb = lb < 0 ? 0 : -lb;
+		int lb = out_length - 1;
 		int max_exp = std::max(x.m_exponent, y.m_exponent);
 		result.m_exponent = max_exp;
 
 		bool prev_borrow = false;
-		while (lb < max_exp)
+		while (lb >= 0)
 		{
 			bool borrow = false;
 			
 
-			int32_t x_digit = get_relative(x, lb);
-			int32_t y_digit = get_relative(y, lb);
+			int32_t x_digit = get_aligned(lb, x, y);
+			int32_t y_digit = get_aligned(lb, y, x);
 
 			if (x_digit-prev_borrow < y_digit) {
 				x_digit += BASE;
@@ -400,7 +401,7 @@ public:
 
 			int32_t res = (x_digit-prev_borrow) - y_digit;
 			result.m_mantissa.push_back(res);
-			lb++;
+			lb--;
 			prev_borrow = borrow;
 		}
 
@@ -649,8 +650,9 @@ public:
 /// <returns>new instance with value of remainder</returns>
 BigFloat operator%(BigFloat const& x, BigFloat const& y) { return x - (x / y).floor() * y; }
 
-BigFloat operator "" _bf(long double x) {
-	return BigFloat(x);
+
+BigFloat operator "" _bf(const char* x) {
+	return { x };
 }
 
 BigFloat find_zero(auto f, BigFloat const& _low, BigFloat const& _high, BigFloat const& _tolerance) {
@@ -677,17 +679,19 @@ BigFloat BigFloat::inverse() const {
 	BigFloat tmp = *this;
 
 	int32_t exp_dif = m_exponent;
-	tmp.m_exponent = 0;
+	tmp.m_exponent -= exp_dif;
+
 	long double sd = m_mantissa.at(0) * INVERSE_BASE;
 	BigFloat low = 1 / sd;
 	BigFloat high = 1 / (sd + INVERSE_BASE);
 
-	return find_zero(
+	BigFloat inverse = find_zero(
 		[tmp](BigFloat const& x) -> BigFloat {return x * tmp - 1; },
 		low, high, "0.0000001"
 	);
-	tmp.m_exponent = exp_dif;
-	return tmp;
+
+	inverse.m_exponent -= exp_dif;
+	return inverse;
 }
 
 

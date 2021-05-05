@@ -151,4 +151,9 @@ int strlen(char* s)
 	return len;
 }
 
+template<typename T>
+T max_abs(T x, T y) {
+	return (std::max(abs(x), abs(y)) == abs(x)) ? x : y;
+}
+
 
