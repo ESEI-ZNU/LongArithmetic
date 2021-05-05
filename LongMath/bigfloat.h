@@ -12,8 +12,6 @@
 #define BigNum(x) BigFloat(#x)
 #define BASE_POW 2
 
-class BigFloat;
-
 const int32_t BASE = pow(10, BASE_POW);
 const double INVERSE_BASE = 1 / (double)BASE;
 
@@ -25,17 +23,19 @@ class BigFloat
 
 private:
 
+	BigFloat& set_negative(bool is_negative) {
+		m_is_negative = is_negative;
+		return *this;
+	}
+
+	BigFloat& add_exp(int32_t delta) {
+		m_exponent += delta;
+		return *this;
+	}
+
 	bool m_is_negative = false;
 	std::vector<std::int32_t> m_mantissa;
 	int32_t m_exponent = 0;
-
-	int32_t after_dot() const {
-		return std::max(0, (int32_t)m_mantissa.size() - m_exponent);
-	}
-
-	int32_t before_dot() const {
-		return std::max(0, m_exponent);
-	}
 
 	int32_t defaulting_digit(int32_t index, int32_t default_value) const {
 		if (index < 0 || index >= m_mantissa.size())
@@ -45,6 +45,8 @@ private:
 
 public:
 
+	static const int32_t MAX_EXP = INT32_MAX;
+	static const int32_t MIN_EXP = INT32_MIN;
 	/// <summary>
 	/// Default constructor
 	/// </summary>
@@ -57,7 +59,6 @@ public:
 	BigFloat(const char* repr)
 	{
 		*this = repr;
-		normalize();
 	}
 
 	/// <summary>
@@ -66,10 +67,7 @@ public:
 	/// <param name="value">Value to be converted into BigFloat type</param>
 	BigFloat(long double value)
 	{
-		char* bytes = (char*)&value;
-		int exponent = bytes[1];
 		*this = std::to_string(value).c_str();
-		normalize();
 	}
 
 	/// <summary>
@@ -174,13 +172,10 @@ public:
 	{
 		std::string str = std::string(s);
 		int idx = 0;
-		bool prevIsNull = true;
-		bool dotPresent = false;
+		bool prev_is_null = true;
+		bool dot_present = false;
 	
-		auto isValid = [](char c)
-		{
-			return ( (c > 47 && c < 58) || c == '.' || c == '_' || c == '-');
-		};
+		auto is_valid = [](char c){ return std::isdigit(c) || c == '.' || c == '_' || c == '-'; };
 
 		// remove all underscores and leading zeros
 		while (idx < str.length())
@@ -193,25 +188,25 @@ public:
 				continue;
 			}
 
-			if (!isValid(c))
+			if (!is_valid(c))
 				throw ParseException("Invalid character");
 
 			if (c == '-' && idx != 0) 
 				throw ParseException("Minus at wrong position");
 
-			if (c == '.' && dotPresent)
+			if (c == '.' && dot_present)
 				throw ParseException("Duplicated dot");
 			
-			dotPresent = dotPresent || c == '.';
+			dot_present = dot_present || c == '.';
 
-			if (prevIsNull && c == '0')
+			if (prev_is_null && c == '0')
 			{
-				prevIsNull = true;
+				prev_is_null = true;
 				str = str.erase(idx, 1);
 				continue;
 			}
 
-			prevIsNull = prevIsNull && c == '0';
+			prev_is_null = prev_is_null && c == '0';
 
 			idx++;
 		}
@@ -224,10 +219,8 @@ public:
 	/// </summary>
 	/// <param name="obj">BigFloat to get absolute value of</param>
 	/// <returns>new positive instance of BigFloat</returns>
-	friend BigFloat abs(BigFloat y)
-	{
-		y.m_is_negative = false;
-		return y;
+	friend BigFloat abs(BigFloat y) {
+		return y.set_negative(false);
 	}
 
 	/// <summary>
@@ -240,14 +233,12 @@ public:
 		auto n = std::find_if(m_mantissa.begin(), m_mantissa.end(), [this](auto x) { return x != 0; });
 		m_exponent -= n - m_mantissa.begin();
 		m_mantissa.erase(m_mantissa.begin(), n);
-		
 
 		while (!m_mantissa.empty() && !m_mantissa.back()) m_mantissa.pop_back();
 
-		// we don't want -0
 		if ( zero() ) {
 			m_is_negative = false;
-			m_exponent = -99999999;
+			m_exponent = MIN_EXP;
 		}
 
 		return *this;
@@ -260,16 +251,29 @@ public:
 	double to_double()
 	{
 		if (m_exponent > 127)
-		{
 			return INFINITY;
-		}
 
 		if (m_exponent < -127)
-		{
 			return 0;
+		
+		return parseDouble(m_mantissa, m_exponent, BASE);
+	}
+
+	std::string to_string() const {
+
+		if (zero()) {
+			return "0";
 		}
-		double d = parseDouble(m_mantissa, m_exponent, BASE);
-		return d;
+
+		std::string repr = m_is_negative ? "-0." : "+0.";
+
+		for (int32_t dig : m_mantissa)
+		{
+			std::string digit = parseString(dig, BASE_POW);
+			repr += digit;
+		}
+
+		return repr + "(B)" + parseString(m_exponent);
 	}
 
 	
@@ -279,8 +283,7 @@ public:
 	/// <returns>new inverted instance</returns>
 	friend BigFloat operator-(BigFloat y)
 	{
-		y.m_is_negative = !y.m_is_negative;
-		return y;
+		return y.set_negative(!y.m_is_negative);
 	}
 
 	/// <summary>
@@ -290,26 +293,27 @@ public:
 	/// <returns>new instance with value of this object increased by obj</returns>
 	friend BigFloat operator+(BigFloat const& x, BigFloat const& y)
 	{
-		if (x.zero())
+		if (x.zero()) {
 			return y;
-		if (y.zero())
+		}
+
+		if (y.zero()) {
 			return x;
+		}
 
-		BigFloat result;
-
-		if (x.m_is_negative)
-		{
+		if (x.m_is_negative) {
 			return y - abs(x);
 		}
-		else if (y.m_is_negative)
-		{
+
+		else if (y.m_is_negative) {
 			return x - abs(y);
 		}
+
+		BigFloat result;
 
 		int32_t out_length = std::max(x.m_mantissa.size(), y.m_mantissa.size()) + abs(x.m_exponent - y.m_exponent);
 
 		auto get_aligned = [](int i, BigFloat const& x, BigFloat const& other) {
-
 			int exp_offset = std::max(0, other.m_exponent - x.m_exponent);
 			return x.defaulting_digit(i - exp_offset, 0);
 		};
@@ -324,7 +328,6 @@ public:
 		{
 			int32_t x_digit = get_aligned(lb, x, y);
 			int32_t y_digit = get_aligned(lb, y, x);
-
 
 			int32_t res = x_digit + y_digit + overflow;
 
@@ -350,17 +353,18 @@ public:
 	/// <returns>new instance with value of this object decreased by obj</returns>
 	friend BigFloat operator-(BigFloat x, BigFloat y)
 	{
-		if (x.zero())
+		if (x.zero()) {
 			return -y;
-		if (y.zero())
+		}
+		if (y.zero()) {
 			return x;
+		}
 
-		if (x.m_is_negative)
-		{
+		if (x.m_is_negative) {
 			return - (abs(x) + y);
 		}
-		else if (y.m_is_negative)
-		{
+
+		else if (y.m_is_negative) {
 			return x + abs(y);
 		}
 		
@@ -390,7 +394,6 @@ public:
 		{
 			bool borrow = false;
 			
-
 			int32_t x_digit = get_aligned(lb, x, y);
 			int32_t y_digit = get_aligned(lb, y, x);
 
@@ -457,8 +460,9 @@ public:
 
 	friend BigFloat mul_fast_0exp(BigFloat const& x, BigFloat const& y) {
 
-		if (x.zero() || y.zero())
+		if (x.zero() || y.zero()) {
 			return 0;
+		}
 
 		auto x_len = x.m_mantissa.size();
 		auto y_len = y.m_mantissa.size();
@@ -466,7 +470,7 @@ public:
 
 		if (x_len == 1 && y_len == 1) {
 			// elementary multiplication 
-			int64_t comp = (int64_t)x.m_mantissa.at(0) * y.m_mantissa.at(0);
+			int64_t comp = (int64_t) x.m_mantissa.at(0) * y.m_mantissa.at(0);
 			int32_t remainder = comp % BASE;
 			BigFloat s = (int32_t)(comp - remainder) / BASE;
 			BigFloat m = remainder;
@@ -500,11 +504,7 @@ public:
 		BigFloat bd = b * d;
 		BigFloat mid = (c + d) * (a + b) - (ac + bd);
 
-		ac.m_exponent += 2 * k;
-		mid.m_exponent += k;
-
-		// todo chaining?
-		return ac + mid + bd;
+		return ac.add_exp(2*k) + mid.add_exp(k) + bd;
 	}
 
 	/// <summary>
@@ -525,12 +525,7 @@ public:
 			return x.m_is_negative ^ y.m_is_negative;
 		};
 
-		BigFloat resn = mul_fast_0exp(x, y);
-
-		resn.m_exponent -= (x_exp_offset + y_exp_offset);
-		resn.m_is_negative = get_sign(x, y);
-
-		return resn.normalize();
+		return mul_fast_0exp(x, y).add_exp( -x_exp_offset - y_exp_offset ).set_negative( get_sign(x, y) ).normalize();
 	}
 
 	BigFloat inverse() const;
@@ -590,23 +585,7 @@ public:
 	/// <returns>same stream instance</returns>
 	friend std::ostream& operator<<(std::ostream& os, BigFloat const& y)
 	{
-		std::vector<int32_t> digits = y.m_mantissa;
-
-		int digCount = digits.size();
-
-		std::string repr = y.m_is_negative ? "-0." : "+0.";
-		
-		for (int32_t dig : y.m_mantissa)
-		{
-			if (dig < 0)
-				dig = -dig;
-
-			std::string digit = parseString(dig, BASE_POW);
-			repr += digit;
-		}
-		repr += "(B)";
-		repr += parseString(y.m_exponent);
-		return os << repr;
+		return os << y.to_string();
 	}
 
 	/// <summary>
@@ -617,29 +596,31 @@ public:
 	/// <returns>same stream instance</returns>
 	friend std::istream& operator>>(std::istream& is, BigFloat& y)
 	{	
-		std::string repr = std::string();
-		char c;
-		while (1) 
-		{
-			is.get(c);
-
-			if (c == 10)
-				break;
-			repr.push_back(c);
-		}
+		std::string repr(std::istreambuf_iterator<char>(is), {});
 		y = repr.c_str();
-	
 		return is;
-	}
-
-	friend BigFloat operator!(BigFloat x) 
-	{
-		x.m_is_negative = !x.m_is_negative;
-		return x;
 	}
 
 	BigFloat operator += (BigFloat const& b) {
 		return *this = *this + b;
+	}
+
+	BigFloat operator -= (BigFloat const& b) {
+		return *this = *this - b;
+	}
+
+	BigFloat operator *= (BigFloat const& b) {
+		return *this = *this * b;
+	}
+
+	BigFloat operator /= (BigFloat const& b) {
+		return *this = *this / b;
+	}
+
+	friend BigFloat operator%(BigFloat const&, BigFloat const&);
+
+	BigFloat operator %= (BigFloat const& b) {
+		return *this = *this % b;
 	}
 };
 
@@ -659,19 +640,15 @@ BigFloat find_zero(auto f, BigFloat const& _low, BigFloat const& _high, BigFloat
 
 	BigFloat mid = (_low + _high) * 0.5_bf;
 
-	BigFloat reversed = f(_low);
-	std::cout << "diff: " << abs(f(_low)) << ": " << reversed << " < " << _tolerance << ": " << (abs(reversed) < _tolerance) << "\n";
+	BigFloat diff = f(_low);
 	
-	if (abs(reversed) < _tolerance) {
+	if (abs(diff) < _tolerance) {
 		return _low;
 	}
 
-	//std::cout << "borders: " << _low << " | " << mid << " | " << _high << "\n";
-	if (f(_low) * f(mid) < 0) {
-		//std::cout << "result is in left border: " << _low << " to " << mid << "\n";
+	if (diff * f(mid) < 0) {
 		return find_zero(f, _low, mid, _tolerance);
 	}
-	//std::cout << "result is in right border: " << mid << " to " << _high << "\n";
 	return find_zero(f, mid, _high, _tolerance);
 }
 
@@ -682,16 +659,14 @@ BigFloat BigFloat::inverse() const {
 	tmp.m_exponent -= exp_dif;
 
 	long double sd = m_mantissa.at(0) * INVERSE_BASE;
+
 	BigFloat low = 1 / sd;
 	BigFloat high = 1 / (sd + INVERSE_BASE);
 
-	BigFloat inverse = find_zero(
+	return find_zero(
 		[tmp](BigFloat const& x) -> BigFloat {return x * tmp - 1; },
-		low, high, "0.0000001"
-	);
-
-	inverse.m_exponent -= exp_dif;
-	return inverse;
+		low, high, 0.0000001_bf
+	).add_exp(-exp_dif);
 }
 
 

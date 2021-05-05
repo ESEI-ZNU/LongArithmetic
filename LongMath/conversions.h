@@ -2,6 +2,8 @@
 #include <iostream>
 #include <vector>
 
+#define BASE_POW 2
+
 int getDigit(char c)
 {
 	return c - 48;
@@ -103,8 +105,6 @@ int32_t parseInt(std::string str)
 
 	return res;
 }
-
-#define BASE_POW 2
 
 double parseDouble(std::vector<int32_t> m_mantissa, int m_exponent, int base)
 {
