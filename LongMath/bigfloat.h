@@ -9,11 +9,7 @@
 #include <algorithm>
 #include "conversions.h"
 
-#define BigNum(x) BigFloat(#x)
-#define BASE_POW 2
 
-const int32_t BASE = pow(10, BASE_POW);
-const double INVERSE_BASE = 1 / (double)BASE;
 
 /// <summary>
 /// Type for storing big numbers with floating point.
@@ -30,6 +26,11 @@ private:
 
 	BigFloat& add_exp(int32_t delta) {
 		m_exponent += delta;
+		return *this;
+	}
+
+	BigFloat& set_exp(int32_t exp) {
+		m_exponent = exp;
 		return *this;
 	}
 
@@ -59,6 +60,11 @@ public:
 	BigFloat(const char* repr)
 	{
 		*this = repr;
+	}
+
+	BigFloat(const std::string repr)
+	{
+		*this = repr.c_str();
 	}
 
 	/// <summary>
@@ -100,6 +106,10 @@ public:
 		normalize();
 	}
 
+	BigFloat(std::tuple<bool, std::vector<int32_t>, int32_t> initializer) {
+		std::tie(m_is_negative, m_mantissa, m_exponent) = initializer;
+	}
+
 	/// <summary>
 	/// Copy constructor
 	/// </summary>
@@ -115,104 +125,12 @@ public:
 	/// <returns>this instance</returns>
 	BigFloat& operator = (const char* repr)
 	{
-		// normalize string
-		std::string str = preproc_str(repr);
-		if (str.at(0) == '-') 
-		{
-			m_is_negative = true;
-		}
-
-		int digit_count = str.size();
-		int dot_idx = str.find('.');
-
-		if (dot_idx != -1)
-		{
-			digit_count = dot_idx;
-			str = str.erase(dot_idx, 1);
-		}
-
-		int cur_ptr = 0;
-		int str_idx = digit_count % BASE_POW;
-
-		std::string digit = std::string(BASE_POW, '0');
-
-		while (cur_ptr < str.size())
-		{
-			digit[str_idx] = str[cur_ptr];
-
-			if (str_idx == BASE_POW - 1)
-			{
-				this->m_mantissa.push_back(parseInt(digit));
-				digit = std::string(BASE_POW, '0');
-			}
-
-			cur_ptr++;
-			str_idx++;
-			str_idx %= BASE_POW;
-		}
-
-		// just in case
-		m_mantissa.push_back(parseInt(digit));
-
-		// count exponent based on dot position
-		m_exponent = ceil(digit_count / (float)BASE_POW);
-		
+		std::tie(m_is_negative, m_mantissa, m_exponent) = parse_bigfloat(normalize_repr(repr));
 		return normalize();
 	}
 
 	BigFloat& operator = (BigFloat const& x) = default;
 	BigFloat& operator = (BigFloat&& x) = default;
-
-	/// <summary>
-	/// Validate and normalize BigFloat representation
-	/// </summary>
-	/// <param name="s">input string</param>
-	/// <returns>output string</returns>
-	std::string preproc_str(const char* s)
-	{
-		std::string str = std::string(s);
-		int idx = 0;
-		bool prev_is_null = true;
-		bool dot_present = false;
-	
-		auto is_valid = [](char c){ return std::isdigit(c) || c == '.' || c == '_' || c == '-'; };
-
-		// remove all underscores and leading zeros
-		while (idx < str.length())
-		{
-			char c = str[idx];
-
-			if (c == '_' || c == '\'')
-			{
-				str.erase(idx, 1);
-				continue;
-			}
-
-			if (!is_valid(c))
-				throw ParseException("Invalid character");
-
-			if (c == '-' && idx != 0) 
-				throw ParseException("Minus at wrong position");
-
-			if (c == '.' && dot_present)
-				throw ParseException("Duplicated dot");
-			
-			dot_present = dot_present || c == '.';
-
-			if (prev_is_null && c == '0')
-			{
-				prev_is_null = true;
-				str = str.erase(idx, 1);
-				continue;
-			}
-
-			prev_is_null = prev_is_null && c == '0';
-
-			idx++;
-		}
-		return str;
-	}
-
 
 	/// <summary>
 	/// changes isNeg value of BigFloat copy to true (positive).
@@ -251,7 +169,7 @@ public:
 	double to_double()
 	{
 		if (m_exponent > 127)
-			return INFINITY;
+			return m_is_negative ? -1 : 1 * INFINITY;
 
 		if (m_exponent < -127)
 			return 0;
@@ -269,11 +187,11 @@ public:
 
 		for (int32_t dig : m_mantissa)
 		{
-			std::string digit = parseString(dig, BASE_POW);
+			std::string digit = std::string(count_digits(dig) % BASE_POW, '0') + std::to_string(dig);
 			repr += digit;
 		}
 
-		return repr + "(B)" + parseString(m_exponent);
+		return repr + "b" + std::to_string(m_exponent);
 	}
 
 	
