@@ -5,8 +5,8 @@ using namespace std;
 
 int main()
 {
-	BigFloat inv = 0.3_bf;
-	inv.inverse();
+	BigFloat inv = 0.412423424341_bf;
+	BigFloat inverse = inv.inverse();
 	BigFloat a = 000000100000e-100_bf;
 	BigFloat b = 1850._bf;
 

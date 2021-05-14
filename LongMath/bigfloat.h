@@ -71,7 +71,7 @@ public:
 	/// Constructor from double
 	/// </summary>
 	/// <param name="value">Value to be converted into BigFloat type</param>
-	BigFloat(long double value)
+	BigFloat(double value)
 	{
 		*this = std::to_string(value).c_str();
 	}
@@ -166,7 +166,7 @@ public:
 	///	cast BigFloat to double
 	/// </summary>
 	/// <returns>double representation of BigFloat</returns>
-	double to_double()
+	double to_double() const
 	{
 		if (m_exponent > 127)
 			return m_is_negative ? -1 : 1 * INFINITY;
@@ -519,25 +519,25 @@ public:
 		return is;
 	}
 
-	BigFloat operator += (BigFloat const& b) {
+	BigFloat& operator += (BigFloat const& b) {
 		return *this = *this + b;
 	}
 
-	BigFloat operator -= (BigFloat const& b) {
+	BigFloat& operator -= (BigFloat const& b) {
 		return *this = *this - b;
 	}
 
-	BigFloat operator *= (BigFloat const& b) {
+	BigFloat& operator *= (BigFloat const& b) {
 		return *this = *this * b;
 	}
 
-	BigFloat operator /= (BigFloat const& b) {
+	BigFloat& operator /= (BigFloat const& b) {
 		return *this = *this / b;
 	}
 
 	friend BigFloat operator%(BigFloat const&, BigFloat const&);
 
-	BigFloat operator %= (BigFloat const& b) {
+	BigFloat& operator %= (BigFloat const& b) {
 		return *this = *this % b;
 	}
 };
@@ -559,27 +559,36 @@ BigFloat find_zero(auto f, BigFloat const& _low, BigFloat const& _high, BigFloat
 	BigFloat mid = (_low + _high) * 0.5_bf;
 
 	BigFloat diff = f(_low);
-	
-	if (abs(diff) < _tolerance) {
-		return _low;
+	BigFloat mid_diff = f(mid);
+
+	if (abs(mid_diff) < _tolerance) {
+		return mid;
 	}
 
-	if (diff * f(mid) < 0) {
+	if (diff * mid_diff <= 0) {
 		return find_zero(f, _low, mid, _tolerance);
 	}
 	return find_zero(f, mid, _high, _tolerance);
 }
 
 BigFloat BigFloat::inverse() const {
-	BigFloat tmp = *this;
+	
+	if (zero()) 
+		throw std::string("division by zero");
 
+	BigFloat tmp = *this;
 	int32_t exp_dif = m_exponent;
+	
+	double sd = m_mantissa.at(0) * INVERSE_BASE;
+
+	if (m_mantissa.size() == 1) {
+		return BigFloat(1. / sd).add_exp(-exp_dif);
+	}
+
 	tmp.m_exponent -= exp_dif;
 
-	long double sd = m_mantissa.at(0) * INVERSE_BASE;
-
-	BigFloat low = 1 / sd;
-	BigFloat high = 1 / (sd + INVERSE_BASE);
+	BigFloat low = (double) (1 / sd);
+	BigFloat high = (double) (1 / (sd + INVERSE_BASE) );
 
 	return find_zero(
 		[tmp](BigFloat const& x) -> BigFloat {return x * tmp - 1; },
