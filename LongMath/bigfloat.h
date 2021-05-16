@@ -1,5 +1,8 @@
-#pragma once
-
+#ifndef BIGFLOAT_H
+#define BIGFLOAT_H
+#include <cmath>
+#include <iterator>
+#include <algorithm>
 #include <vector>
 #include <iostream>
 #include <string>
@@ -31,38 +34,51 @@ class BigFloat
 {
 
 protected:
-
+	int divDigits;
 	bool isNeg = false;
 	std::vector<std::int32_t> mantissa;
+	static const int len_f_naive = 3;
 	int32_t exponent = 0;
+	int count_;
 
 public:
 
 	// default constructor
-	BigFloat() {};
+	BigFloat() { divDigits = 10; count_ = 0; };
 
 	// string constructor
 	BigFloat(const char* repr)
 	{
+		count_ = 0;
 		*this = repr;
 	}
 
 	// numeric constructor
 	BigFloat(double value)
 	{
+		divDigits = 10;
+		count_ = 0;
 		*this = std::to_string(value).c_str();
 	}
-
+	BigFloat(std::vector<std::int32_t> mantis) :
+		mantissa(mantis),
+		exponent(0)
+	{
+		count_ = 0;
+	}
 	// copy constructor
 	BigFloat(const BigFloat& obj)
 	{
 		this->exponent = obj.exponent;
 		this->mantissa = obj.mantissa;
 		this->isNeg = obj.isNeg;
+		divDigits = obj.divDigits;
+		count_ = 0;
 	}
 
 	BigFloat operator = (const char* repr)
 	{
+		count_ = 0;
 		// normalize string
 		std::string str = preprocStr(repr);
 		if (str.at(0) == '-') 
@@ -104,7 +120,7 @@ public:
 
 		// count exponent based on dot position
 		this->exponent = ceil(digitCounter / (float)basePow);
-		
+		divDigits = 10;
 		return this->normalize();
 	}
 
@@ -219,7 +235,11 @@ public:
 		copy.isNeg = !copy.isNeg;
 		return copy.normalize();
 	}
-
+	//Diana
+	void setExp(int exp)
+	{
+		exponent = exp;
+	}
 	BigFloat& operator+(BigFloat& obj)
 	{
 		if (this->isNeg && !obj.isNeg)
@@ -707,3 +727,4 @@ public:
 		return out;
 	}
 };
+#endif // BIGFLOAT_H
