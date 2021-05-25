@@ -9,6 +9,14 @@
 const int32_t BASE = pow(10, BASE_POW);
 const double INVERSE_BASE = 1 / (double)BASE;
 
+/// <summary>
+/// count digits of given object 
+/// that supports division operation
+/// </summary>
+/// <typeparam name="T">division-supporting object type</typeparam>
+/// <param name="l">obejct itself</param>
+/// <param name="base">number base</param>
+/// <returns>number of digits in given object</returns>
 template <typename T>
 int count_digits(T l, int base = 10)
 {
@@ -17,7 +25,13 @@ int count_digits(T l, int base = 10)
 	return i;
 }
 
-
+/// <summary>
+/// parses bigfloat components into double type
+/// </summary>
+/// <param name="m_mantissa">bigfloat's mantissa</param>
+/// <param name="m_exponent">bigfloat's exponent</param>
+/// <param name="base">number base</param>
+/// <returns>double representation of bigfloat</returns>
 double parseDouble(std::vector<int32_t> m_mantissa, int m_exponent, int base)
 {
 	double res = 0;
@@ -36,6 +50,12 @@ double parseDouble(std::vector<int32_t> m_mantissa, int m_exponent, int base)
 	return res;
 }
 
+/// <summary>
+/// </summary>
+/// <typeparam name="T"></typeparam>
+/// <param name="x"></param>
+/// <param name="y"></param>
+/// <returns>maximum of two absolute values</returns>
 template<typename T>
 T max_abs(T x, T y) {
 	return (std::max(abs(x), abs(y)) == abs(x)) ? x : y;
@@ -54,6 +74,11 @@ std::string normalize_repr(char const* s)
 	return str;
 }
 
+/// <summary>
+/// parse normalized string into array of digits
+/// </summary>
+/// <param name="string">number representation</param>
+/// <returns>array of digits in given base</returns>
 std::vector<int32_t>parse_digits(std::string string) {
 	std::vector<int32_t> digits;
 
@@ -76,6 +101,11 @@ std::vector<int32_t>parse_digits(std::string string) {
 	return digits;
 }
 
+/// <summary>
+/// parse string representation of bigfloat that matches regex into separate components
+/// </summary>
+/// <param name="str">string representation</param>
+/// <returns>tuple of is_negative, mantissa and exponent</returns>
 std::tuple<bool, std::vector<int32_t>, int32_t> parse_bigfloat(std::string const& str) {
 	std::regex re(BIG_FLOAT_PARSE_REGEX);
 	std::smatch match;

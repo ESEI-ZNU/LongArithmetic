@@ -10,7 +10,6 @@
 #include "conversions.h"
 
 
-
 /// <summary>
 /// Type for storing big numbers with floating point.
 /// </summary>
@@ -19,16 +18,31 @@ class BigFloat
 
 private:
 
+	/// <summary>
+	/// is_negative setter
+	/// </summary>
+	/// <param name="is_negative">flag value</param>
+	/// <returns>updated instance</returns>
 	BigFloat& set_negative(bool is_negative) {
 		m_is_negative = is_negative;
 		return *this;
 	}
 
+	/// <summary>
+	/// exponent setter
+	/// </summary>
+	/// <param name="delta">exponent difference</param>
+	/// <returns>updated instance</returns>
 	BigFloat& add_exp(int32_t delta) {
 		m_exponent += delta;
 		return *this;
 	}
 
+	/// <summary>
+	/// exponent setter
+	/// </summary>
+	/// <param name="exp">new exponent</param>
+	/// <returns>updated instance</returns>
 	BigFloat& set_exp(int32_t exp) {
 		m_exponent = exp;
 		return *this;
@@ -38,6 +52,12 @@ private:
 	std::vector<std::int32_t> m_mantissa;
 	int32_t m_exponent = 0;
 
+	/// <summary>
+	/// Getter for digits that can default to value if one does not exist in vector
+	/// </summary>
+	/// <param name="index">index to get value at</param>
+	/// <param name="default_value">value to return if digit not present</param>
+	/// <returns>digit of number or default value if not present</returns>
 	int32_t defaulting_digit(int32_t index, int32_t default_value) const {
 		if (index < 0 || index >= m_mantissa.size())
 			return default_value;
@@ -48,6 +68,7 @@ public:
 
 	static const int32_t MAX_EXP = INT32_MAX;
 	static const int32_t MIN_EXP = INT32_MIN;
+
 	/// <summary>
 	/// Default constructor
 	/// </summary>
@@ -62,6 +83,10 @@ public:
 		*this = repr;
 	}
 
+	/// <summary>
+	/// Constructor from std::string
+	/// </summary>
+	/// <param name="repr">string representation of number</param>
 	BigFloat(const std::string repr)
 	{
 		*this = repr.c_str();
@@ -77,7 +102,7 @@ public:
 	}
 
 	/// <summary>
-	/// Numeric constructor
+	/// constructor from single digit
 	/// </summary>
 	/// <param name="value">value of number</param>
 	BigFloat(int32_t value)
@@ -87,6 +112,10 @@ public:
 		normalize();
 	}
 
+	/// <summary>
+	/// Constructior from mantissa. leaves other fields as they are
+	/// </summary>
+	/// <param name="mantissa">mantissa of the number</param>
 	BigFloat(std::vector<int32_t> mantissa)
 	{
 		m_mantissa = mantissa;
@@ -96,8 +125,8 @@ public:
 	/// <summary>
 	/// Number constructor that allows full control over number fields.
 	/// </summary>
-	/// <param name="mantissa">mantissa</param>
-	/// <param name="exponent">exponent</param>
+	/// <param name="mantissa">mantissa of the number</param>
+	/// <param name="exponent">exponent of the number</param>
 	/// <param name="neg">negative flag</param>
 	BigFloat(std::vector<int32_t> mantissa, int32_t exponent, bool neg) {
 		m_is_negative = neg;
@@ -106,6 +135,10 @@ public:
 		normalize();
 	}
 
+	/// <summary>
+	/// Number constructor that allows full control over number fields.
+	/// </summary>
+	/// <param name="initializer">field values (is negative, mantissa, exponent) packed into tuple.</param>
 	BigFloat(std::tuple<bool, std::vector<int32_t>, int32_t> initializer) {
 		std::tie(m_is_negative, m_mantissa, m_exponent) = initializer;
 	}
@@ -177,6 +210,10 @@ public:
 		return parseDouble(m_mantissa, m_exponent, BASE);
 	}
 
+	/// <summary>
+	/// converts nmumber to it's string representation
+	/// </summary>
+	/// <returns>number as string</returns>
 	std::string to_string() const {
 
 		if (zero()) {
@@ -331,6 +368,10 @@ public:
 		return result.normalize();
 	}
 
+	/// <summary>
+	/// Round the bigfloat downwards removing fractial part
+	/// </summary>
+	/// <returns>whole bigfloat number copy</returns>
 	BigFloat floor() {
 		BigFloat res = *this;
 		res.m_mantissa.erase(res.m_mantissa.begin() + res.m_exponent, res.m_mantissa.end());
@@ -459,6 +500,11 @@ public:
 		return (x * y.inverse()).normalize();
 	}
 	
+	/// <summary>
+	/// checks if number is zero. 
+	/// Required since there are many valid null representations
+	/// </summary>
+	/// <returns>whether number is equal to zero</returns>
 	bool zero() const {
 		return m_mantissa.empty() || std::all_of( 
 			m_mantissa.begin(), m_mantissa.end(), 
@@ -550,6 +596,11 @@ public:
 BigFloat operator%(BigFloat const& x, BigFloat const& y) { return x - (x / y).floor() * y; }
 
 
+/// <summary>
+/// User-defined literal. effectively calls constructor from string
+/// </summary>
+/// <param name="x">c-string, number represencation</param>
+/// <returns>new instance of bigfloat</returns>
 BigFloat operator "" _bf(const char* x) {
 	return { x };
 }
@@ -572,7 +623,7 @@ BigFloat find_zero(auto f, BigFloat const& _low, BigFloat const& _high, BigFloat
 }
 
 BigFloat BigFloat::inverse() const {
-	
+	const static auto tolerance = 0.1e-10_bf;
 	if (zero()) 
 		throw std::string("division by zero");
 
@@ -592,7 +643,7 @@ BigFloat BigFloat::inverse() const {
 
 	return find_zero(
 		[tmp](BigFloat const& x) -> BigFloat {return x * tmp - 1; },
-		low, high, 0.0000001_bf
+		low, high, tolerance
 	).add_exp(-exp_dif);
 }
 
