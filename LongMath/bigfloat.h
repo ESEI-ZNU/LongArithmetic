@@ -239,15 +239,20 @@ public:
 			return "0";
 		}
 
-		std::string repr = m_is_negative ? "-0." : "+0.";
-
+		std::string repr = m_is_negative ? "-" : "";
+		
+		int digit_count = 0;
 		for (int32_t dig : m_mantissa)
 		{
 			std::string digit = std::string(count_digits(dig) % BASE_POW, '0') + std::to_string(dig);
+			if (digit_count == m_exponent)  {
+				repr += '.';
+			}
 			repr += digit;
+			digit_count++;
 		}
 
-		return repr + "b" + std::to_string(m_exponent);
+		return repr;
 	}
 
 	
