@@ -10,6 +10,7 @@ const int32_t BASE = pow(10, BASE_POW);
 const double INVERSE_BASE = 1 / (double)BASE;
 
 /// <summary>
+/// <para>author: Odaysky Vladimir</para>
 /// count digits of given object 
 /// that supports division operation
 /// </summary>
@@ -26,6 +27,7 @@ int count_digits(T l, int base = 10)
 }
 
 /// <summary>
+/// <para>author: Odaysky Vladimir</para>
 /// parses bigfloat components into double type
 /// </summary>
 /// <param name="m_mantissa">bigfloat's mantissa</param>
@@ -51,6 +53,7 @@ double parseDouble(std::vector<int32_t> m_mantissa, int m_exponent, int base)
 }
 
 /// <summary>
+/// <para>author: Odaysky Vladimir</para>
 /// </summary>
 /// <typeparam name="T"></typeparam>
 /// <param name="x"></param>
@@ -62,10 +65,11 @@ T max_abs(T x, T y) {
 }
 
 /// <summary>
-	/// Validate and normalize BigFloat representation
-	/// </summary>
-	/// <param name="s">input string</param>
-	/// <returns>output string</returns>
+/// <para>author: Odaysky Vladimir</para>
+/// Validate and normalize BigFloat representation
+/// </summary>
+/// <param name="s">input string</param>
+/// <returns>output string</returns>
 std::string normalize_repr(char const* s)
 {
 	std::string str = s;
@@ -75,6 +79,7 @@ std::string normalize_repr(char const* s)
 }
 
 /// <summary>
+/// <para>author: Odaysky Vladimir</para>
 /// parse normalized string into array of digits
 /// </summary>
 /// <param name="string">number representation</param>
@@ -102,6 +107,7 @@ std::vector<int32_t>parse_digits(std::string string) {
 }
 
 /// <summary>
+/// <para>author: Odaysky Vladimir</para>
 /// parse string representation of bigfloat that matches regex into separate components
 /// </summary>
 /// <param name="str">string representation</param>
@@ -111,7 +117,7 @@ std::tuple<bool, std::vector<int32_t>, int32_t> parse_bigfloat(std::string const
 	std::smatch match;
 
 	if (!std::regex_search(str, match, re)) {
-		throw ParseException("Invalid Format");
+		throw std::exception("Invalid Format");
 	}
 
 	std::string sign = match.str(1);
