@@ -408,7 +408,7 @@ public:
 	}
 	
 	/// <summary>
-	/// <para>author: Odaysky Vladimir</para>
+	/// <para>authors: Diana Nesterenko, Odaysky Vladimir</para>
 	/// <para>Operator that multiplies BigFloat by digit. Inplements long multiplication algorithim since its effective enough here. </para>
 	/// </summary>
 	/// <param name="x">BigFloat</param>
@@ -498,7 +498,7 @@ public:
 	}
 
 	/// <summary>
-	/// <para>author: Odaysky Vladimir</para>
+	/// <para>authors: Diana Nesterenko, Odaysky Vladimir</para>
 	/// <para>Operator that multiplies BigFloat by BigFloat. Implements Caratsuba's algorithm.</para>
 	/// </summary>
 	/// <param name="x">BigFloat</param>
@@ -522,7 +522,7 @@ public:
 	BigFloat inverse() const;
 
 	/// <summary>
-	/// <para>author: Odaysky Vladimir</para>
+	/// <para>author: Diana Nesterenko</para>
 	/// <para>Divide BigFloat by BigFloat. Effectively multiplies by inverse number</para>
 	/// </summary>
 	/// <param name="x">BigFloat dividend</param>
@@ -603,6 +603,22 @@ public:
 		//std::string repr( std::istreambuf_iterator<char>(is), {});
 		y = repr;
 		return is;
+	}
+
+	BigFloat operator++() {
+		return (*this += 1)-1;
+	}
+
+	BigFloat& operator++(int) {
+		return *this += 1;
+	}
+
+	BigFloat operator--() {
+		return (*this -= 1) + 1;
+	}
+
+	BigFloat& operator--(int) {
+		return *this -= 1;
 	}
 
 	BigFloat& operator += (BigFloat const& b) {
