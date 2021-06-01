@@ -1,11 +1,14 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <iostream>
 #include "bigfloat.h"
+
 
 using namespace std;
 
 int main()
 {
-	auto a = 1436873960.80532050977130886_bf;
-	auto b = 49758.94930977615307528598175_bf;
-	std::cout << '\n' << a << " + " << b << " =\n= " << a + b << '\n';
+    auto n1 = 12353634563535_bf;
+    auto n2 = 3456673537735_bf;
+    std::cout << n1 / n2;
 }

@@ -3,7 +3,7 @@
 #include <vector>
 #include <regex>
 
-#define BASE_POW 2
+#define BASE_POW 9
 #define BIG_FLOAT_PARSE_REGEX "([+-])?(((\\d+)(\\.(\\d*))?)|(\\.(\\d+)))([eE]([+-])?(\\d+))?"
 
 const int32_t BASE = pow(10, BASE_POW);
@@ -126,9 +126,9 @@ std::tuple<bool, std::vector<int32_t>, int32_t> parse_bigfloat(std::string const
 	std::string exp_sign = match.str(10);
 	std::string exp = match.str(11);
 	
-	int whole_diff = whole_part.size() % BASE_POW;
+	int whole_diff = BASE_POW - whole_part.size() % BASE_POW;
 	whole_part = std::string(whole_diff, '0') + whole_part;
-	int frac_diff = frac_part.size() % BASE_POW;
+	int frac_diff = BASE_POW - frac_part.size() % BASE_POW;
 	frac_part += std::string(frac_diff, '0');
 	std::vector<int32_t> mantissa = parse_digits(whole_part);
 	int32_t exponent = mantissa.size();

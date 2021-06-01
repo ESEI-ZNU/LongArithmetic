@@ -8,7 +8,6 @@
 #include <algorithm>
 #include "conversions.h"
 
-
 /// <summary>
 /// <para>author: Odaysky Vladimir</para>
 /// <para>Type for storing big numbers with floating point.</para>
@@ -106,7 +105,9 @@ public:
 	/// <param name="value">Value to be converted into BigFloat type</param>
 	BigFloat(double value)
 	{
-		*this = std::to_string(value).c_str();
+		char str[100] = {};
+		sprintf(str, "%.50f", value);
+		*this = str;
 	}
 
 
@@ -244,7 +245,7 @@ public:
 		int digit_count = 0;
 		for (int32_t dig : m_mantissa)
 		{
-			std::string digit = std::string(count_digits(dig) % BASE_POW, '0') + std::to_string(dig);
+			std::string digit = std::string(BASE_POW - count_digits(dig), '0') + std::to_string(dig) + '\'';
 			if (digit_count == m_exponent)  {
 				repr += '.';
 			}
@@ -460,7 +461,8 @@ public:
 			// elementary multiplication 
 			int64_t comp = (int64_t) x.m_mantissa.at(0) * y.m_mantissa.at(0);
 			int32_t remainder = comp % BASE;
-			BigFloat s = (int32_t)(comp - remainder) / BASE;
+			int32_t intermediate = (comp - remainder) / BASE;
+			BigFloat s = intermediate;
 			BigFloat m = remainder;
 			s.m_exponent += 1;
 			return s + m;
@@ -595,8 +597,11 @@ public:
 	/// <returns>same stream instance</returns>
 	friend std::istream& operator>>(std::istream& is, BigFloat& y)
 	{	
-		std::string repr(std::istreambuf_iterator<char>(is), {});
-		y = repr.c_str();
+		std::string repr;
+		std::getline(is, repr);
+
+		//std::string repr( std::istreambuf_iterator<char>(is), {});
+		y = repr;
 		return is;
 	}
 
@@ -657,6 +662,7 @@ BigFloat find_zero(auto f, BigFloat const& _low, BigFloat const& _high, BigFloat
 
 	BigFloat diff = f(_low);
 	BigFloat mid_diff = f(mid);
+	BigFloat high_diff = f(_high);
 
 	if (abs(mid_diff) < _tolerance) {
 		return mid;
@@ -681,19 +687,21 @@ BigFloat BigFloat::inverse() const {
 	BigFloat tmp = *this;
 	int32_t exp_dif = m_exponent;
 	
-	double sd = m_mantissa.at(0) * INVERSE_BASE;
-
+	double sd = m_mantissa.at(0);
+	
 	if (m_mantissa.size() == 1) {
 		return BigFloat(1. / sd).add_exp(-exp_dif);
 	}
 
-	tmp.m_exponent -= exp_dif;
+	tmp.m_exponent = 0;
 
-	BigFloat low = (double) (1 / sd);
-	BigFloat high = (double) (1 / (sd + INVERSE_BASE) );
+	BigFloat low = (double)BASE / sd;
+	BigFloat high = (double)BASE / (sd+1);
 
 	return find_zero(
-		[tmp](BigFloat const& x) -> BigFloat {return x * tmp - 1; },
+		[tmp](BigFloat const& x) -> BigFloat {
+			return x * tmp - 1; 
+		},
 		low, high, tolerance
 	).add_exp(-exp_dif);
 }
