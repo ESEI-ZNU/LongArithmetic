@@ -118,7 +118,8 @@ public:
 	/// <param name="value">value of number</param>
 	BigFloat(int32_t value)
 	{
-		this->m_mantissa = std::vector<int32_t>{ value };
+		m_is_negative = value < 0;
+		this->m_mantissa = std::vector<int32_t>{ abs(value) };
 		this->m_exponent = 1;
 		normalize();
 	}
@@ -205,7 +206,7 @@ public:
 
 		while (!m_mantissa.empty() && !m_mantissa.back()) m_mantissa.pop_back();
 
-		if ( zero() ) {
+		if (zero()) {
 			m_is_negative = false;
 			m_exponent = MIN_EXP;
 		}
@@ -225,7 +226,7 @@ public:
 
 		if (m_exponent < -127)
 			return 0;
-		
+
 		return parseDouble(m_mantissa, m_exponent, BASE);
 	}
 
@@ -241,12 +242,12 @@ public:
 		}
 
 		std::string repr = m_is_negative ? "-" : "";
-		
+
 		int digit_count = 0;
 		for (int32_t dig : m_mantissa)
 		{
 			std::string digit = std::string(BASE_POW - count_digits(dig), '0') + std::to_string(dig) + '\'';
-			if (digit_count == m_exponent)  {
+			if (digit_count == m_exponent) {
 				repr += '.';
 			}
 			repr += digit;
@@ -256,7 +257,7 @@ public:
 		return repr;
 	}
 
-	
+
 	/// <summary>
 	/// <para>author: Odaysky Vladimir</para>
 	/// <para>Unary minus. invert isNeg flag of BigFloat</para>
@@ -299,11 +300,11 @@ public:
 			int exp_offset = std::max(0, other.m_exponent - x.m_exponent);
 			return x.defaulting_digit(i - exp_offset, 0);
 		};
-		
-		int lb = out_length-1;
+
+		int lb = out_length - 1;
 		int max_exp = std::max(x.m_exponent, y.m_exponent);
 		result.m_exponent = max_exp;
-		
+
 		bool overflow = false;
 
 		while (lb >= 0)
@@ -324,7 +325,7 @@ public:
 			result.m_exponent++;
 		}
 		std::reverse(result.m_mantissa.begin(), result.m_mantissa.end());
-	
+
 		return result.normalize();
 	}
 
@@ -344,13 +345,13 @@ public:
 		}
 
 		if (x.m_is_negative) {
-			return - (abs(x) + y);
+			return -(abs(x) + y);
 		}
 
 		else if (y.m_is_negative) {
 			return x + abs(y);
 		}
-		
+
 		BigFloat result;
 
 		if (y > x) {
@@ -376,16 +377,16 @@ public:
 		while (lb >= 0)
 		{
 			bool borrow = false;
-			
+
 			int32_t x_digit = get_aligned(lb, x, y);
 			int32_t y_digit = get_aligned(lb, y, x);
 
-			if (x_digit-prev_borrow < y_digit) {
+			if (x_digit - prev_borrow < y_digit) {
 				x_digit += BASE;
 				borrow = true;
 			}
 
-			int32_t res = (x_digit-prev_borrow) - y_digit;
+			int32_t res = (x_digit - prev_borrow) - y_digit;
 			result.m_mantissa.push_back(res);
 			lb--;
 			prev_borrow = borrow;
@@ -403,10 +404,18 @@ public:
 	/// <returns>whole bigfloat number copy</returns>
 	BigFloat floor() {
 		BigFloat res = *this;
-		res.m_mantissa.erase(res.m_mantissa.begin() + res.m_exponent, res.m_mantissa.end());
-		return res;
+
+		if (m_mantissa.empty())
+			return 0;
+
+		if (m_exponent == 0 && res.m_mantissa.at(0) == BASE - 1) {
+			return 1;
+		}
+
+		res.m_mantissa = std::vector(res.m_mantissa.begin(), res.m_mantissa.begin() + std::max(m_exponent, 0)); //.erase(res.m_mantissa.begin() + res.m_exponent, res.m_mantissa.end());
+		return res.normalize();
 	}
-	
+
 	/// <summary>
 	/// <para>authors: Diana Nesterenko, Odaysky Vladimir</para>
 	/// <para>Operator that multiplies BigFloat by digit. Inplements long multiplication algorithim since its effective enough here. </para>
@@ -459,7 +468,7 @@ public:
 
 		if (x_len == 1 && y_len == 1) {
 			// elementary multiplication 
-			int64_t comp = (int64_t) x.m_mantissa.at(0) * y.m_mantissa.at(0);
+			int64_t comp = (int64_t)x.m_mantissa.at(0) * y.m_mantissa.at(0);
 			int32_t remainder = comp % BASE;
 			int32_t intermediate = (comp - remainder) / BASE;
 			BigFloat s = intermediate;
@@ -467,7 +476,7 @@ public:
 			s.m_exponent += 1;
 			return s + m;
 		}
-		
+
 		int k = std::max(std::ceil(x_len / 2.), std::ceil(y_len / 2.));
 
 		std::vector<int32_t>vec_a(k);
@@ -494,7 +503,7 @@ public:
 		BigFloat bd = b * d;
 		BigFloat mid = (c + d) * (a + b) - (ac + bd);
 
-		return ac.add_exp(2*k) + mid.add_exp(k) + bd;
+		return ac.add_exp(2 * k) + mid.add_exp(k) + bd;
 	}
 
 	/// <summary>
@@ -516,7 +525,7 @@ public:
 			return x.m_is_negative ^ y.m_is_negative;
 		};
 
-		return mul_fast_0exp(x, y).add_exp( -x_exp_offset - y_exp_offset ).set_negative( get_sign(x, y) ).normalize();
+		return mul_fast_0exp(x, y).add_exp(-x_exp_offset - y_exp_offset).set_negative(get_sign(x, y)).normalize();
 	}
 
 	BigFloat inverse() const;
@@ -532,7 +541,7 @@ public:
 	{
 		return (x * y.inverse()).normalize();
 	}
-	
+
 	/// <summary>
 	/// author: Odaysky Vladimir
 	/// checks if number is zero. 
@@ -540,8 +549,8 @@ public:
 	/// </summary>
 	/// <returns>whether number is equal to zero</returns>
 	bool zero() const {
-		return m_mantissa.empty() || std::all_of( 
-			m_mantissa.begin(), m_mantissa.end(), 
+		return m_mantissa.empty() || std::all_of(
+			m_mantissa.begin(), m_mantissa.end(),
 			[](int32_t i) { return i == 0; }
 		);
 	}
@@ -562,17 +571,17 @@ public:
 		}
 
 		auto maybe_invert = [this](std::strong_ordering c) -> std::strong_ordering {
-		if (m_is_negative)
-			return 0 <=> c;
-		else 
-			return c; 
+			if (m_is_negative)
+				return 0 <=> c;
+			else
+				return c;
 		};
 
 		if (auto c = m_exponent <=> other.m_exponent; c != 0)
 		{
 			return maybe_invert(c);
 		}
-		
+
 		return maybe_invert(std::lexicographical_compare_three_way(m_mantissa.begin(), m_mantissa.end(), other.m_mantissa.begin(), other.m_mantissa.end()));
 	}
 
@@ -596,7 +605,7 @@ public:
 	/// <param name="obj">instance to initialize</param>
 	/// <returns>same stream instance</returns>
 	friend std::istream& operator>>(std::istream& is, BigFloat& y)
-	{	
+	{
 		std::string repr;
 		std::getline(is, repr);
 
@@ -606,7 +615,7 @@ public:
 	}
 
 	BigFloat operator++() {
-		return (*this += 1)-1;
+		return (*this += 1) - 1;
 	}
 
 	BigFloat& operator++(int) {
@@ -650,7 +659,7 @@ public:
 /// </summary>
 /// <param name="obj">BigFloat to divide by this instance</param>
 /// <returns>new instance with value of remainder</returns>
-BigFloat operator%(BigFloat const& x, BigFloat const& y) { return x - (x / y).floor() * y; }
+BigFloat operator%(BigFloat const& x, BigFloat const& y) { return x - (x / y).normalize().floor() * y; }
 
 
 /// <summary>
@@ -697,29 +706,29 @@ BigFloat find_zero(auto f, BigFloat const& _low, BigFloat const& _high, BigFloat
 /// <returns>inverse value</returns>
 BigFloat BigFloat::inverse() const {
 	const static auto tolerance = 0.1e-10_bf;
-	if (zero()) 
+	if (zero())
 		throw std::string("division by zero");
 
 	BigFloat tmp = *this;
 	int32_t exp_dif = m_exponent;
-	
+
 	double sd = m_mantissa.at(0);
-	
+
 	if (m_mantissa.size() == 1) {
-		return BigFloat(1. / sd).add_exp(-exp_dif);
+		return BigFloat(1. / (sd / BASE)).add_exp(-exp_dif).normalize();
 	}
 
 	tmp.m_exponent = 0;
 
 	BigFloat low = (double)BASE / sd;
-	BigFloat high = (double)BASE / (sd+1);
+	BigFloat high = (double)BASE / (sd + 1);
 
 	return find_zero(
 		[tmp](BigFloat const& x) -> BigFloat {
-			return x * tmp - 1; 
+			return x * tmp - 1;
 		},
 		low, high, tolerance
-	).add_exp(-exp_dif);
+			).add_exp(-exp_dif).normalize();
 }
 
 
